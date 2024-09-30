@@ -134,3 +134,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# vscode settings
+.vscode/
+
+# helpers documentation and functions
+/help
+
+# private inputs
+/inputs
