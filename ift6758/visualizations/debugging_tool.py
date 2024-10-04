@@ -25,9 +25,6 @@ def plot_coords_on_image(rink_coord_x, rink_coord_y, image=rink_image, debug_ori
 
         return image_coords_x, image_coords_y
 
-    # # Example coordinates in feet
-    # rink_coord_x, rink_coord_y = 68, 2
-
     # Convert to pixel coordinates
     image_coords_x, image_coords_y = feet_to_pixels(rink_coord_x, rink_coord_y)
 
@@ -51,7 +48,7 @@ def plot_coords_on_image(rink_coord_x, rink_coord_y, image=rink_image, debug_ori
 
 
     # Plot the point with the adjusted coordinates
-    ax.plot(adjusted_coords_x, adjusted_coords_y, 'yo')
+    ax.plot(adjusted_coords_x, adjusted_coords_y, 'o', markersize=10, markerfacecolor='magenta')
 
     # Generate axis labels
     step_size_x = rink_length / 8  # in feet
@@ -97,7 +94,7 @@ def display_season_data(season: str) -> None:
         print_game_info(data)
 
         events = data["plays"]
-        event_slider = widgets.IntSlider(min=0, max=len(events), step=1, description='Event ID:')
+        event_slider = widgets.IntSlider(min=0, max=len(events), step=1, description='Event no:') # event number is the index in the list of events
         display(event_slider)
 
         def on_event_id_change(change):
@@ -109,12 +106,11 @@ def display_season_data(season: str) -> None:
 
             display(event_slider)
 
-            print(event["eventId"])
-            print(event["typeDescKey"])
+            print("event id: ", event["eventId"])
+            print("event description: ", event["typeDescKey"])
             if "details" in event:
                 if "xCoord" in event["details"] and "yCoord" in event["details"]:
-                    print(event["details"]["xCoord"])
-                    print(event["details"]["yCoord"])
+                    print("x: ", event["details"]["xCoord"], "y: ", event["details"]["yCoord"])
                     plot_coords_on_image(event["details"]["xCoord"], event["details"]["yCoord"], debug_origin=False)
 
         event_slider.observe(on_event_id_change, names='value')
