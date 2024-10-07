@@ -13,6 +13,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Venv
+lab-ift6758/
+
+
 # Distribution / packaging
 .Python
 build/
