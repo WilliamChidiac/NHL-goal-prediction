@@ -29,8 +29,10 @@ class ShotOnGoalEvent:
         event_id,
         period,
         time,
-        shooting_player,
-        goalie,
+        shooting_player_id,
+        shooting_player_name,
+        goalie_id,
+        goalie_name,
         x_coord,
         y_coord,
         shot_type,
@@ -42,9 +44,11 @@ class ShotOnGoalEvent:
         self.y_coord = y_coord
         self.period = period
         self.time = time
-        self.shooting_player = shooting_player
+        self.shooting_player_id = shooting_player_id
+        self.shooting_player_name = shooting_player_name
+        self.goalie_id = goalie_id
+        self.goalie_name = goalie_name
         self.shot_type = shot_type
-        self.goalie = goalie
         self.owner_team = owner_team
         self.event_id = event_id
         self.zone_code = zone_code
@@ -54,11 +58,13 @@ class ShotOnGoalEvent:
             "game_id": self.game_id,
             "period": self.period,
             "time": self.time,
-            "shooting_player": self.shooting_player,
+            "shooting_player_id": self.shooting_player_id,
+            "shooting_player_name": self.shooting_player_name,
+            "goalie_id": self.goalie_id,
+            "goalie_name": self.goalie_name,
             "x_coord": self.x_coord,
             "y_coord": self.y_coord,
             "owner_team": self.owner_team,
-            "goalie": self.goalie,
             "shot_type": self.shot_type,
             "zone_code": self.zone_code,
             "event_id": self.event_id,
@@ -72,11 +78,13 @@ class GoalEvent:
         event_id,
         period,
         time,
-        scoring_player,
+        shooting_player_id,
+        shooting_player_name,
+        goalie_id,
+        goalie_name,
         x_coord,
         y_coord,
         owner_team,
-        goalie,
         shot_type,
         zone_code,
     ):
@@ -85,9 +93,11 @@ class GoalEvent:
         self.y_coord = y_coord
         self.period = period
         self.time = time
-        self.scoring_player = scoring_player
+        self.shooting_player_id = shooting_player_id
+        self.shooting_player_name = shooting_player_name
+        self.goalie_id = goalie_id
+        self.goalie_name = goalie_name
         self.owner_team = owner_team
-        self.goalie = goalie
         self.shot_type = shot_type
         self.event_id = event_id
         self.zone_code = zone_code
@@ -97,11 +107,13 @@ class GoalEvent:
             "game_id": self.game_id,
             "period": self.period,
             "time": self.time,
-            "scoring_player": self.scoring_player,
+            "shooting_player_id": self.shooting_player_id,
+            "shooting_player_name": self.shooting_player_name,
+            "goalie_id": self.goalie_id,
+            "goalie_name": self.goalie_name,
             "x_coord": self.x_coord,
             "y_coord": self.y_coord,
             "owner_team": self.owner_team,
-            "goalie": self.goalie,
             "shot_type": self.shot_type,
             "zone_code": self.zone_code,
             "event_id": self.event_id,
