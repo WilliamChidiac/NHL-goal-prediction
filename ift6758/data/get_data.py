@@ -90,7 +90,7 @@ def load_cached_data(file_path) -> dict:
         return None
 
 
-def retrieve_game_data(game_id) -> dict:
+def retrieve_game_data(game_id:int, save:bool = False) -> dict:
     data_dir = (
         Path(__file__).resolve().parent.as_posix() + "/raw_data"
     )  # path to the raw data directory relative to this file
@@ -106,7 +106,7 @@ def retrieve_game_data(game_id) -> dict:
 
     data = download_data(game_id)
     if data:  # do not create a file if the download failed
-        with open(f"{data_dir}/{filename}", "w") as file:
-            json.dump(data, file)
-
+        if save:
+            with open(f"{data_dir}/{filename}", "w") as file:
+                json.dump(data, file)
     return data
