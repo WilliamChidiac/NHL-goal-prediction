@@ -4,7 +4,8 @@ class PenaltyShotEvent:
         game_id,
         event_id,
         period,
-        time,
+        time_remaining,
+        time_in_period,
         defending_player,
         attacking_player,
         x_coord,
@@ -15,7 +16,8 @@ class PenaltyShotEvent:
         self.x_coord = x_coord
         self.y_coord = y_coord
         self.period = period
-        self.time = time
+        self.time_remaining = time_remaining
+        self.time_in_period = time_in_period
         self.defending_player = defending_player  # commited the fault
         self.attacking_player = attacking_player  # who got the penalty shot
         self.owner_team = owner_team
@@ -28,7 +30,8 @@ class ShotOnGoalEvent:
         game_id,
         event_id,
         period,
-        time,
+        time_remaining,
+        time_in_period,
         shooting_player_id,
         shooting_player_name,
         goalie_id,
@@ -43,7 +46,8 @@ class ShotOnGoalEvent:
         self.x_coord = x_coord
         self.y_coord = y_coord
         self.period = period
-        self.time = time
+        self.time_remaining = time_remaining
+        self.time_in_period = time_in_period
         self.shooting_player_id = shooting_player_id
         self.shooting_player_name = shooting_player_name
         self.goalie_id = goalie_id
@@ -57,7 +61,8 @@ class ShotOnGoalEvent:
         return {
             "game_id": self.game_id,
             "period": self.period,
-            "time": self.time,
+            "time_remaining": self.time_remaining,
+            "time_in_period": self.time_in_period,
             "shooting_player_id": self.shooting_player_id,
             "shooting_player_name": self.shooting_player_name,
             "goalie_id": self.goalie_id,
@@ -77,7 +82,8 @@ class GoalEvent:
         game_id,
         event_id,
         period,
-        time,
+        time_remaining,
+        time_in_period,
         shooting_player_id,
         shooting_player_name,
         goalie_id,
@@ -92,7 +98,8 @@ class GoalEvent:
         self.x_coord = x_coord
         self.y_coord = y_coord
         self.period = period
-        self.time = time
+        self.time_remaining = time_remaining
+        self.time_in_period = time_in_period
         self.shooting_player_id = shooting_player_id
         self.shooting_player_name = shooting_player_name
         self.goalie_id = goalie_id
@@ -106,7 +113,8 @@ class GoalEvent:
         return {
             "game_id": self.game_id,
             "period": self.period,
-            "time": self.time,
+            "time_remaining": self.time_remaining,
+            "time_in_period": self.time_in_period,
             "shooting_player_id": self.shooting_player_id,
             "shooting_player_name": self.shooting_player_name,
             "goalie_id": self.goalie_id,
