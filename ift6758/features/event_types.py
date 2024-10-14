@@ -33,6 +33,7 @@ class JsonToObject:
         """
         for key, value in parse_json(json, keys).items():
             self.__setattr__(key, value)
+            
     def renameAttribute(self, old_attr, new_attr):
         """rename an attribute of the object
 
@@ -42,6 +43,7 @@ class JsonToObject:
         """
         self.__setattr__(new_attr, self.__getattribute__(old_attr))
         delattr(self, old_attr)
+        
     def stripAttribute(self, name:str):
         """strip a part of the attribute name
 
@@ -68,10 +70,12 @@ class Game(JsonToObject):
     def __init__(self, play_by_play: dict):
         game = parse_json(play_by_play, Game.attribute)
         if game['id'] in Game.games:
-            raise ValueError(f"Game with ID {game['id']} already exists")
+            self = Game.games[game['id']]
         self.setattr(game, Game.attribute)
         Game.games[game['id']] = self
     
+    def __str__(self) -> str:
+        return f"Game {self.get_id()} on {self.get_date()} between {self.get_home_data()} and {self.get_away_data()}"
     
     def get_id(self) -> int:
         """get game id
@@ -113,9 +117,14 @@ class ShotsEvent(JsonToObject):
     def __init__(self, game : Game, event_json : Dict[str, Any]):
         self.game = game
         self.setattr(event_json, ShotsEvent.attributes)
-        for att in ShotsEvent.attributes:
-            self.renameAttribute(att, att.strip("details_"))
+        self.stripAttribute("details_")
 
+    def __str__(self) -> str:
+        return f"event id : {self.get_event_id()}"
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+    
     def get_game(self) -> Game:
         """get the game object
 
@@ -195,10 +204,15 @@ class ShotOnGoalEvent (ShotsEvent):
     attributes = ['details.shootingPlayerId', 'details.goalieInNetId', 'details.shotType', 'details.zoneCode']
 
     def __init__(self, game : Game, event_json : Dict[str, Any]):
-        super().__init__(game, event_json)
-        self.setattr(event_json, ShotOnGoalEvent.attributes)
-        self.stripAttribute("details_")
-
+        try:
+            super().__init__(game, event_json)
+            self.setattr(event_json, ShotOnGoalEvent.attributes)
+            self.stripAttribute("details_")
+        except KeyError as e:
+            print(f"Error in ShotOnGoalEvent: {e}")
+            
+    def __str__(self) -> str:
+        return super().__str__()
 
 class GoalEvent(ShotsEvent):
     
@@ -208,3 +222,6 @@ class GoalEvent(ShotsEvent):
         super().__init__(game, event_json)
         self.setattr(event_json, GoalEvent.attributes)
         self.stripAttribute("details_")
+        
+    def __str__(self) -> str:
+        return super().__str__()
