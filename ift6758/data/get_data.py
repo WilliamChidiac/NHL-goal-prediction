@@ -57,6 +57,7 @@ def clean_playoff_game_id(game_id) -> str:
 
 def regular_season_game_id_generator(season) -> list[int]:
     game_ids = []
+    season = str(season)
     for game_number in range(1, int(game_number_per_year[season]) + 1):
         game_id = f"{season}{REGULAR_SEASON}{game_number:04d}"
         game_ids.append(int(game_id))
