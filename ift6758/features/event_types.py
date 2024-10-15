@@ -1,129 +1,38 @@
-from typing import List, Dict, Tuple, Union, Any
-
-def parse_json(json : Dict[str, Any], keys : List[str]) -> Dict[str, Any]:
-    """get the values of the keys in the json
-
-    Args:
-        json (Dict[str, Any]): the original json
-        keys (List[str]): the keys to get the values from the json (if the key is nested, use '.' to separate the keys)
-
-    Returns:
-        Dict[str, Any]: the values of the keys in the json
-    """
-    res = {}
-    for key in keys:
-        path = key.split(".")
-        val = json
-        for p in path:
-            try:
-                val = val[p]
-            except KeyError:
-                val = None
-                break
-        res["_".join(path)] = val
-    return res
-
-class JsonToObject:
-    def setattr(self, json : Dict[str, Any], keys : List[str]):
-        """set the attributes of the object from the json
-
-        Args:
-            json (Dict[str, Any]): the json to get the values from
-            keys (List[str]): the keys to get the values from the json (if the key is nested, use '.' to separate the keys)
-        """
-        for key, value in parse_json(json, keys).items():
-            self.__setattr__(key, value)
-            
-    def renameAttribute(self, old_attr, new_attr):
-        """rename an attribute of the object
-
-        Args:
-            old_attr (str): the old attribute name
-            new_attr (str): the new attribute name
-        """
-        self.__setattr__(new_attr, self.__getattribute__(old_attr))
-        delattr(self, old_attr)
-        
-    def stripAttribute(self, name:str):
-        """strip a part of the attribute name
-
-        Args:
-            name (str): the part to strip
-        """
-        for key in self.__dict__:
-            if name in key:
-                self.renameAttribute(key, key.strip(name))
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """convert the object to a dictionary
-
-        Returns:
-            Dict[str, Any]: the dictionary representation of the object
-        """
-        return {key: self.__getattribute__(key) for key in self.__dict__}
-
-class Game(JsonToObject):
-    
-    games = {}
-    attribute = ['id', 'gameDate', 'homeTeam.abbrev', 'homeTeam.score', 'awayTeam.abbrev', 'awayTeam.score', 'awayTeam.id', 'homeTeam.id']
-
-    def __init__(self, play_by_play: dict):
-        game = parse_json(play_by_play, Game.attribute)
-        if game['id'] in Game.games:
-            self = Game.games[game['id']]
-        self.setattr(game, Game.attribute)
-        Game.games[game['id']] = self
-    
-    def __str__(self) -> str:
-        return f"Game {self.get_id()} on {self.get_date()} between {self.get_home_data()} and {self.get_away_data()}"
-    
-    def get_id(self) -> int:
-        """get game id
-
-        Returns:
-            int : game id 
-        """
-        return self.id
-
-    def get_date(self) -> str:
-        """get game date
-
-        Returns:
-            str : game date
-        """
-        return self.gameDate
-    
-    def get_home_data(self) -> Tuple[int, str, int]:
-        """get the home team data
-
-        Returns:
-            Tuple[int, str, int]: (id, abbrev, score)
-        """
-        return (self.homeTeam_id, self.homeTeam_abbrev, self.homeTeam_score)
-    
-    def get_away_data(self) -> Tuple[int, str, int]:
-        """get the away team data
-
-        Returns:
-            Tuple[int, str, int]: (id, abbrev, score)
-        """
-        return (self.awayTeam_id, self.awayTeam_abbrev, self.awayTeam_score)
-        
+from ift6758.data import get_data as gd
+from .utilities import *
+from .game import Game
         
 class ShotsEvent(JsonToObject):
     
     attributes = ['eventId', 'timeInPeriod', 'details.xCoord', 'details.yCoord', 'details.eventOwnerTeamId']
+    events_by_game : Dict[int, List['ShotsEvent']] = {}
     
     def __init__(self, game : Game, event_json : Dict[str, Any]):
-        self.game = game
         self.setattr(event_json, ShotsEvent.attributes)
         self.stripAttribute("details_")
+        id = game.get_id()
+        try:
+            ShotsEvent.events_by_game[id].append(self)
+        except KeyError:
+            ShotsEvent.events_by_game[id] = [self]
+    
+    @staticmethod 
+    def get_events_by_game(game_id : int) -> List['ShotsEvent']:
+        """get the events by game id
+
+        Args:
+            game_id (int): the game id
+
+        Returns:
+            List['ShotsEvent']: the list of events
+        """
+        return ShotsEvent.events_by_game[game_id]
 
     def __str__(self) -> str:
-        return f"event id : {self.get_event_id()}"
+        return str(self.to_dict())
     
     def __repr__(self) -> str:
-        return self.__str__()
+        return f"event_{self.get_event_id()}"
     
     def get_game(self) -> Game:
         """get the game object
@@ -165,13 +74,13 @@ class ShotsEvent(JsonToObject):
         """
         return self.eventOwnerTeamId
     
-    def to_dict(self) -> Dict[str, Any]:
-        """convert the object to a dictionary
+    def get_event_type(self) -> str:
+        """get the event type
 
         Returns:
-            Dict[str, Any]: the dictionary representation of the object
+            str: the event type
         """
-        return self.__dict__
+        return self.__class__.__name__
 
 class PenaltyShotEvent(ShotsEvent):
 
@@ -199,29 +108,32 @@ class PenaltyShotEvent(ShotsEvent):
         self.attacking_player = attacking_player  # who got the penalty shot
         self.owner_team = owner_team
         self.event_id = event_id
-class ShotOnGoalEvent (ShotsEvent):
+class ShotOnGoal (ShotsEvent):
     
     attributes = ['details.shootingPlayerId', 'details.goalieInNetId', 'details.shotType', 'details.zoneCode']
 
-    def __init__(self, game : Game, event_json : Dict[str, Any]):
+    def __init__(self, game : Game, event_json : Dict[str, Any], verbose : bool = False):
         try:
             super().__init__(game, event_json)
-            self.setattr(event_json, ShotOnGoalEvent.attributes)
-            self.stripAttribute("details_")
+            self.setattr(event_json, ShotOnGoal.attributes)
+            self.stripAttribute("details_", verbose=verbose)
         except KeyError as e:
             print(f"Error in ShotOnGoalEvent: {e}")
             
     def __str__(self) -> str:
         return super().__str__()
 
-class GoalEvent(ShotsEvent):
+class Goal(ShotsEvent):
     
     attributes = ['details.scoringPlayerId', 'details.goalieInNetId', 'details.shotType', 'details.zoneCode']
 
-    def __init__(self, game : Game, event_json : Dict[str, Any]):
+    def __init__(self, game : Game, event_json : Dict[str, Any], verbose : bool = False):
         super().__init__(game, event_json)
-        self.setattr(event_json, GoalEvent.attributes)
-        self.stripAttribute("details_")
+        self.setattr(event_json, Goal.attributes)
+        if verbose:
+            print(event_json)
+        self.stripAttribute("details_", verbose=verbose)
         
     def __str__(self) -> str:
         return super().__str__()
+    

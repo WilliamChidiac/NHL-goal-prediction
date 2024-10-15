@@ -55,11 +55,11 @@ def clean_playoff_game_id(game_id) -> str:
     return game_id.replace("_", "").replace("-", "")
 
 
-def regular_season_game_id_generator(season) -> list[str]:
+def regular_season_game_id_generator(season) -> list[int]:
     game_ids = []
     for game_number in range(1, int(game_number_per_year[season]) + 1):
         game_id = f"{season}{REGULAR_SEASON}{game_number:04d}"
-        game_ids.append(game_id)
+        game_ids.append(int(game_id))
     return game_ids
 
 
@@ -90,7 +90,7 @@ def load_cached_data(file_path) -> dict:
         return None
 
 
-def retrieve_game_data(game_id:int, save:bool = False) -> dict:
+def retrieve_game_data(game_id:int, save:bool = False, verbose : bool = False) -> dict:
     data_dir = (
         Path(__file__).resolve().parent.as_posix() + "/raw_data"
     )  # path to the raw data directory relative to this file
@@ -98,12 +98,18 @@ def retrieve_game_data(game_id:int, save:bool = False) -> dict:
     file_path = f"{data_dir}/{filename}"
 
     if os.path.exists(file_path):
+        if verbose:
+            print("Using cached data for game id: ", game_id)
         data = load_cached_data(file_path)
         if data:
             return data
         else:  # file is present but corrupted: remove it, and redownload
+            if verbose:
+                print("Removing corrupted file: ", file_path)
             os.remove(file_path)
 
+    if verbose:
+        print("Downloading data for game id: ", game_id)
     data = download_data(game_id)
     if data:  # do not create a file if the download failed
         if save:
