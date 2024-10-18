@@ -5,6 +5,7 @@ import numpy as np
 import ipywidgets as widgets
 from ift6758.data import get_data
 from typing import Tuple, List
+import plotly.graph_objects as go
 
 heatmap_image_path = "../figures/heatmap_template.png"
 heatmap = Image.open(heatmap_image_path)
