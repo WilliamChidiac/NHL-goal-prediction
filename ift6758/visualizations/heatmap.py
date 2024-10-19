@@ -13,6 +13,13 @@ half_length = 100
 half_width = 85
 
 
+def invert_period_coords(row):
+    if row["periodDescriptor_number"] % 2 == 0:
+        row["xCoord"] = -row["xCoord"]
+        row["yCoord"] = -row["yCoord"]
+    return row
+
+
 def get_coord(x: int, y: int) -> Tuple[int, int]:
     length, width = heatmap.size
     image_coords_x = x / half_length * length
