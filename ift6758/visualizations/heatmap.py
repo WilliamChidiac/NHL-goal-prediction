@@ -55,8 +55,35 @@ rink_image_path = "../figures/nhl_rink.png"
 rink_image = Image.open(rink_image_path)
 
 
+fig = go.Figure()
+fig.data = []
+fig.layout = {}
+
+
+def select_team(teams_and_shots):
+
+    team_dropdown = widgets.Dropdown(
+        options=list(teams_and_shots.keys()),
+        description="Team:",
+        disabled=False,
+    )
+
+    # Function to update the plot based on the selected team
+    def update_plot(team):
+        fig.layout = {}
+        fig.data = []
+        clear_output(wait=True)
+        display(team_dropdown)
+        selected_shots = teams_and_shots[team]
+        plot_coords_on_image_plotly(selected_shots, image=rink_image, fig=fig)
+
+    widgets.interactive(update_plot, team=team_dropdown)
+
+    display(team_dropdown)
+
+
 def plot_coords_on_image_plotly(
-    rink_coords: List[Tuple[int, int]], image=rink_image, debug_origin=False
+    rink_coords: List[Tuple[int, int]], image=rink_image, debug_origin=False, fig=None
 ) -> None:
 
     # Get dimensions
@@ -80,7 +107,7 @@ def plot_coords_on_image_plotly(
     # Create heatmap
     hm, xedges, yedges = np.histogram2d(x_pixel, y_pixel, bins=(100, 100))
 
-    fig = go.Figure()
+    # fig = go.Figure()
 
     # Add heatmap
     fig.add_trace(
