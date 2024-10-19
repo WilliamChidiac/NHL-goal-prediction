@@ -38,8 +38,9 @@ def plot_coords_on_heatmap(x_s: List[int], y_s: List[int], image=heatmap):
         x_pixel.append(image_coords_x)
         y_pixel.append(image_coords_y)
     hm, xedges, yedges = np.histogram2d(x_pixel, y_pixel, bins=(100, 100))
+    hm = np.sqrt(hm)
     plt.imshow(
-        heatmap, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], aspect="auto"
+        image, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], aspect="auto"
     )
     plt.imshow(
         hm.T,
