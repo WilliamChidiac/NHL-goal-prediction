@@ -47,7 +47,7 @@ def matchups(season, round, matchup_range):
     game_ids = []
     for matchup in range(1, matchup_range + 1):
         for best_of_seven in range(1, 7 + 1):
-            game_ids.append(f"{season}_{PLAYOFFS}_0-{round}-{matchup}-{best_of_seven}")
+            game_ids.append(f"{season}{PLAYOFFS}0{round}{matchup}{best_of_seven}")
     return game_ids
 
 
@@ -91,7 +91,7 @@ def load_cached_data(file_path) -> dict:
         return None
 
 
-def retrieve_game_data(game_id:int, save:bool = False, verbose : bool = False) -> dict:
+def retrieve_game_data(game_id: int, save: bool = False, verbose: bool = False) -> dict:
     data_dir = (
         Path(__file__).resolve().parent.as_posix() + "/raw_data"
     )  # path to the raw data directory relative to this file
