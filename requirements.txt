@@ -3,7 +3,7 @@ pandas
 matplotlib
 seaborn
 requests
-opencv-python
+opencv
 tqdm
 lxml
 plotly
@@ -11,3 +11,4 @@ ipywidgets
 ipykernel
 jupyterlab>=3.0.0
 setuptools
+wandb
