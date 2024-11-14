@@ -17,6 +17,7 @@ PLAYOFFS = "03"
 For playoff games, the 2nd digit of the specific number gives the round of the playoffs, the 3rd digit specifies the matchup, and the 4th digit specifies the game (out of 7).
 """
 game_number_per_year = {
+    "2016": "1230",  # 30 teams that play 82 games
     "2017": "1271",  # 31 teams that play 82 games
     "2018": "1271",
     "2019": "1082",  # trial and error on the NHL API
