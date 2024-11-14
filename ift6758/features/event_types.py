@@ -91,38 +91,6 @@ class ShotsEvent(JsonToObject):
         """
         return self.__class__.__name__
 
-
-class PenaltyShotEvent(ShotsEvent):
-
-    attributes = ["details"]
-
-    def __init__(
-        self,
-        game_id,
-        event_id,
-        period,
-        time,
-        owner_team,
-        x_coord,
-        y_coord,
-        defending_player,
-        attacking_player,
-        x_coord,
-        y_coord,
-        owner_team,
-    ):
-        self.game_id = game_id
-        self.x_coord = x_coord
-        self.y_coord = y_coord
-        self.period = period
-        self.time_remaining = time_remaining
-        self.time_in_period = time_in_period
-        self.defending_player = defending_player  # commited the fault
-        self.attacking_player = attacking_player  # who got the penalty shot
-        self.owner_team = owner_team
-        self.event_id = event_id
-
-
 class ShotOnGoal(ShotsEvent):
 
     attributes = [
