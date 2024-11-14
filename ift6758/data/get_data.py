@@ -17,6 +17,7 @@ PLAYOFFS = "03"
 For playoff games, the 2nd digit of the specific number gives the round of the playoffs, the 3rd digit specifies the matchup, and the 4th digit specifies the game (out of 7).
 """
 game_number_per_year = {
+    "2016": "1230",  # 30 teams that play 82 games
     "2017": "1271",  # 31 teams that play 82 games
     "2018": "1271",
     "2019": "1082",  # trial and error on the NHL API
@@ -47,7 +48,7 @@ def matchups(season, round, matchup_range):
     game_ids = []
     for matchup in range(1, matchup_range + 1):
         for best_of_seven in range(1, 7 + 1):
-            game_ids.append(f"{season}_{PLAYOFFS}_0-{round}-{matchup}-{best_of_seven}")
+            game_ids.append(f"{season}{PLAYOFFS}0{round}{matchup}{best_of_seven}")
     return game_ids
 
 
@@ -55,11 +56,12 @@ def clean_playoff_game_id(game_id) -> str:
     return game_id.replace("_", "").replace("-", "")
 
 
-def regular_season_game_id_generator(season) -> list[str]:
+def regular_season_game_id_generator(season) -> list[int]:
     game_ids = []
+    season = str(season)
     for game_number in range(1, int(game_number_per_year[season]) + 1):
         game_id = f"{season}{REGULAR_SEASON}{game_number:04d}"
-        game_ids.append(game_id)
+        game_ids.append(int(game_id))
     return game_ids
 
 
@@ -90,7 +92,7 @@ def load_cached_data(file_path) -> dict:
         return None
 
 
-def retrieve_game_data(game_id:int, save:bool = False) -> dict:
+def retrieve_game_data(game_id: int, save: bool = False, verbose: bool = False) -> dict:
     data_dir = (
         Path(__file__).resolve().parent.as_posix() + "/raw_data"
     )  # path to the raw data directory relative to this file
@@ -98,12 +100,18 @@ def retrieve_game_data(game_id:int, save:bool = False) -> dict:
     file_path = f"{data_dir}/{filename}"
 
     if os.path.exists(file_path):
+        if verbose:
+            print("Using cached data for game id: ", game_id)
         data = load_cached_data(file_path)
         if data:
             return data
         else:  # file is present but corrupted: remove it, and redownload
+            if verbose:
+                print("Removing corrupted file: ", file_path)
             os.remove(file_path)
 
+    if verbose:
+        print("Downloading data for game id: ", game_id)
     data = download_data(game_id)
     if data:  # do not create a file if the download failed
         if save:
