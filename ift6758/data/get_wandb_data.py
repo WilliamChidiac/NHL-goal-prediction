@@ -5,7 +5,7 @@ import pandas as pd
 artifact_path = "../ift6758/data/wandb_artifacts/shot_events"
 
 
-def download_artifact(project_name="IFT6758-2024-B05", artifact_name = "shot_events:latest"):
+def download_artifact(artifact_name, project_name="IFT6758-2024-B05"):
     """
     Downloads a specified artifact from Weights & Biases (wandb) and saves it to a local directory.
     An artifact in the context of Weights & Biases (wandb) is a versioned file or collection of files, such as datasets, models, or other outputs, that are tracked and managed within a project. 
