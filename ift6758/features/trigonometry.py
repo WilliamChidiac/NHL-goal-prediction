@@ -18,18 +18,26 @@ def compute_distance_from_net(row):
     distance = ((row['xCoord'] - net_coords[0])**2 + row['yCoord']**2)**0.5
     return distance
 
-def compute_angle_from_net(row, positive_angle=True):
+def compute_angle_from_net(row):
     net_coords = determine_enemy_net_coords(row)
-    dx = row['xCoord'] - net_coords[0]
-    dy = row['yCoord'] - net_coords[1]
-    angle = math.atan2(dy, dx)  # Angle in radians
-    angle_degrees = math.degrees(angle)  # Convert to degrees
-    return abs(angle_degrees) if positive_angle else angle_degrees
+    dx = abs(net_coords[0] - row['xCoord'])
+    dy = abs(net_coords[1] - row['yCoord'])
+    angle_radian = math.atan2(dy, dx)  
+    angle_degrees = math.degrees(angle_radian)  
+    return angle_degrees
+
 
 
 def plot_distances_histogram(df):
     df['distance_from_net'].hist(bins=50)
-    plt.xlabel('Distance from Goal')
+    plt.xlabel('Distance from Net (feet)')
     plt.ylabel('Frequency')
-    plt.title('Histogram of Distances from Goal')
+    plt.title('Histogram of Distances from Net')
+    plt.show()
+
+def plot_angles_histogram(df):
+    df['angle_from_net'].hist(bins=50)
+    plt.xlabel('Angle from Net (degrees)')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of Angles from Net')
     plt.show()

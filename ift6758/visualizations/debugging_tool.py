@@ -145,6 +145,41 @@ def display_regular_season(season: str):
     display(game_id_slider)
 
 
+def display_game_id(game_id: str):
+    data = get_data.retrieve_game_data(game_id)
+
+    clear_output(wait=True)
+    if data is None:
+        print(f"Game ID {game_id} doesn't exist")
+        clear_output(wait=True)
+        return
+
+    print_game_info(data)
+
+    events = data["plays"]
+    event_input = widgets.Text(
+        value='0',
+        description='Event no:',
+        disabled=False
+    )  # event number is the index in the list of events
+    display(event_input)
+
+    def on_event_input_change(change):
+        try:
+            event_index = int(change['new'])    
+            for event in events:
+                if event['eventId'] == event_index:
+                    clear_output(wait=True)
+                    print_game_info(data)
+                    display(event_input)
+                    print_event_info(event)
+            
+        except:
+            print("Please enter a valid integer.")
+
+    event_input.observe(on_event_input_change, names='value')
+
+
 def print_playoff_game_info(game_id):
     _, round, matchup, game = game_id.split("_")[2].split("-")
     print(f"Round: {round}")
