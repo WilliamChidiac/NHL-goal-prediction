@@ -98,7 +98,9 @@ def retrieve_game_data(game_id: int, save: bool = False, verbose: bool = False) 
     )  # path to the raw data directory relative to this file
     filename = f"{game_id}.json"
     file_path = f"{data_dir}/{filename}"
-
+    if not os.path.exists(data_dir):
+        print("Creating directory: ", data_dir)
+        os.makedirs(data_dir)
     if os.path.exists(file_path):
         if verbose:
             print("Using cached data for game id: ", game_id)

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple, Union
+from typing import List, Dict, Any, Tuple, Union, Optional
 
 def parse_json(json : Dict[str, Any], keys : List[str], verbose : bool = False) -> Dict[str, Any]:
     """get the values of the keys in the json
@@ -66,6 +66,18 @@ class JsonToObject:
                 if verbose:
                     print(f"stripping {name} from {key} -> {key.replace(name, '')}")
                 self.renameAttribute(key, key.replace(name, ''))
+    
+    def addPrefix(self, prefix:str, verbose : bool = False):
+        """add a prefix to all the attributes
+
+        Args:
+            prefix (str): the prefix to add
+        """
+        keys = list(self.__dict__.keys())
+        for key in keys:
+            if verbose:
+                print(f"adding {prefix} to {key} -> {prefix + key}")
+            self.renameAttribute(key, prefix + key)
     
     def to_dict(self) -> Dict[str, Any]:
         """convert the object to a dictionary
