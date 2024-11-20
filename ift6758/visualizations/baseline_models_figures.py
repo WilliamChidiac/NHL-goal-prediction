@@ -106,7 +106,7 @@ def plot_confusion_matrix(y_true, y_pred):
     plt.show()
 
 
-def produce_figures(y_pred_proba, y_pred_discrete, y_true):
+def plot_figures(y_pred_proba, y_pred_discrete, y_true):
 
     # 0. Confusion matrix
     plot_confusion_matrix(y_true, y_pred_discrete)
