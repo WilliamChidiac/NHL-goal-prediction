@@ -97,6 +97,8 @@ class ShotsEvent(Event):
         ower_team_id = self.get_owner_team_id()
         side, _ = self.get_coordinates()
         zone_code = self.get_zone_code()
+        if side == None:
+            return 'central'
         if home_team_id == ower_team_id:
             if zone_code == "O" and side > 0: 
                 return 'left'

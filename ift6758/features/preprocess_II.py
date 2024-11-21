@@ -120,7 +120,9 @@ class Row:
             return None
         if self.home_team_side == 'central':
             raise ValueError("The home team side has not been determined")
-        net_x, net_y = Row.RIGHT_NET if self.home_team_side == 'left' else Row.LEFT_NET
+        side = (self.owner_team_id == self.home_team_id) + (self.home_team_side == 'left')
+        net_x, net_y = Row.RIGHT_NET if side%2 == 0 else Row.LEFT_NET
+        
         distance = ((self.x_coord - net_x)**2 + (self.y_coord - net_y)**2)**0.5
         self.distance_from_net = distance
         return distance
