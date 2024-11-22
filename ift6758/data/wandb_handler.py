@@ -5,9 +5,10 @@ import json
 import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pathlib import Path
+from sklearn.base import BaseEstimator
 
 class WandbHandler:
-    def __init__(self, project_name, artifact_root_path="../ift6758/data/wandb_artifacts/"):
+    def __init__(self, project_name="IFT6758-2024-B05", artifact_root_path="../ift6758/data/wandb_artifacts/"):
         self.project_name = project_name
         self.artifact_root_path = Path(artifact_root_path)
         self.api = wandb.Api()
@@ -28,7 +29,7 @@ class WandbHandler:
         run.log_artifact(artifact)
         run.finish()
     
-    def upload_dataset_to_wandb(self, df, seasons, artifact_name, run_name, description=None, tags=None):
+    def upload_dataset_to_wandb(self, df, seasons, artifact_name, run_name, description=None):
         """
         Uploads a dataset to wandb as an artifact.
 
@@ -46,13 +47,13 @@ class WandbHandler:
                 table = wandb.Table(dataframe=df[df["season"] == formatted_season])
                 artifact.add(table, f"{season}")
             run.log_artifact(artifact)
-            artifact.wait()
-            artifact.tags = tags
-            artifact.save()
+    
+    def __str__(self) -> str:
+        return f"Project: {self.project_name}\nArtifact Root Path: {self.artifact_root_path}"
 
 
 class DataLoader(WandbHandler):
-    def __init__(self, project_name, artifact_root_path="../ift6758/data/wandb_artifacts/"):
+    def __init__(self, project_name="IFT6758-2024-B05", artifact_root_path="../ift6758/data/wandb_artifacts/"):
         super().__init__(project_name, artifact_root_path)
 
     def convert_artifact_to_df(self, file_path):
@@ -66,7 +67,8 @@ class DataLoader(WandbHandler):
         if download_artifact:
             self.download_artifact(artifact_name, artifact_version)
         artifact_dir = self.artifact_root_path / artifact_name
-        file_path = next((artifact_dir / f for f in os.listdir(artifact_dir) if season in f), None) # find the file with the season in the name
+        file_path = artifact_dir / f"{season}.table.json"
+        # file_path = next((artifact_dir / f for f in os.listdir(artifact_dir) if season in f), None) # find the file with the season in the name
         df = self.convert_artifact_to_df(file_path)
         return df
 
@@ -87,26 +89,66 @@ class DataLoader(WandbHandler):
                 dataframes.append(df)
         return pd.concat(dataframes, ignore_index=True)
 
-class ModelUploader(WandbHandler):
-    def __init__(self, project_name, artifact_root_path="../ift6758/data/wandb_artifacts/"):
-        super().__init__(project_name, artifact_root_path)
+class ModelHandler(WandbHandler):
+    def __init__(self, model_root_path="../ift6758/models/"):
+        super().__init__(artifact_root_path="../ift6758/data/wandb_artifacts/")
+        self.model_root_path = Path(model_root_path)
 
-    def log_model(self, model, model_name, model_path, y_true, y_pred, features):
+    def dump(self, model: BaseEstimator, model_name: str):
+        model_path = self.model_root_path / Path(f"{model_name}.pkl")
         joblib.dump(model, model_path)
-        run = wandb.init(project=self.project_name)
-        run.log({"confusion_matrix": wandb.plot.confusion_matrix(probs=None,
-                                                                y_true=y_true.flatten().tolist(),
-                                                                preds=y_pred.flatten().tolist(),
-                                                                class_names=["Not Goal", "Goal"])})
-        run.config.update({
-            "model_type": model_name,
-            "features": features
-        })
-        run.log({"accuracy": accuracy_score(y_true, y_pred)})
-        run.log({"precision": precision_score(y_true, y_pred)})
-        run.log({"recall": recall_score(y_true, y_pred)})
-        run.log({"f1_score": f1_score(y_true, y_pred)})
-        artifact = wandb.Artifact(model_name, type='model')
-        artifact.add_file(model_path)
-        run.log_artifact(artifact)
-        run.finish()
+    
+    def predict(self, model, X_eval):
+        y_pred_discrete = model.predict(X_eval)
+        y_pred_proba = model.predict_proba(X_eval)
+        return y_pred_discrete, y_pred_proba
+
+    def get_metrics(self, y_pred_discrete, y_eval):
+        metrics = {
+            "accuracy": accuracy_score(y_eval, y_pred_discrete),
+            "precision": precision_score(y_eval, y_pred_discrete),
+            "recall": recall_score(y_eval, y_pred_discrete),
+            "f1_score": f1_score(y_eval, y_pred_discrete)
+        }
+        return metrics
+
+    def log_wandb(self, model_name, X_eval, y_eval, features):
+        """
+        Logs the model and evaluation metrics to wandb.
+
+        Args:
+            model_name (str): Name of the model.
+            model_path (str): Path to save the model.
+            X_eval (np.array): Evaluation features.
+            y_eval (np.array): Evaluation labels.
+            features (list): List of feature names.
+        """
+        model_path = self.model_root_path / Path(f"{model_name}.pkl")
+        model = joblib.load(model_path) # load and predict to ensure model is correctly stored
+        y_pred_discrete, y_pred_proba = self.predict(model, X_eval)
+        with wandb.init(project=self.project_name) as run:
+            metrics = self.get_metrics(y_pred_discrete, y_eval)
+            run.log({"confusion_matrix": wandb.plot.confusion_matrix(probs=None,
+                                                                    y_true=y_eval.flatten().tolist(),
+                                                                    preds=y_pred_discrete.flatten().tolist(),
+                                                                    class_names=["Not Goal", "Goal"])})
+            run.config.update({
+                "model_type": model_name,
+                "features": features
+            })
+            run.log(metrics)
+            artifact = wandb.Artifact(model_name, type='model')
+            artifact.add_file(model_path)
+            run.log_artifact(artifact)
+
+    def load_model(self, model_name, model_version):
+        model = None
+        with wandb.init(project=self.project_name) as run:
+            model_artifact = run.use_artifact(f'{model_name}:{model_version}', type='model')
+            model_dir = model_artifact.download()
+            model_path = Path(model_dir) / Path(f"{model_name}.pkl")
+            model = joblib.load(model_path)
+        return model
+    
+
+    
