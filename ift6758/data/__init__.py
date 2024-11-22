@@ -12,4 +12,3 @@ but both are still valid. You can read more about packages and modules here:
 https://docs.python.org/3/reference/import.html#regular-packages
 """
 from .get_data import retrieve_game_data, game_number_per_year, REGULAR_SEASON, PLAYOFFS
-from .get_wandb_data import download_artifact, convert_artifact_to_df, load_season_dataframe, load_all_files_from_artifact
