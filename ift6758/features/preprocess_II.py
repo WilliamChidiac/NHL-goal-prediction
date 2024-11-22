@@ -40,7 +40,7 @@ class Row:
         if not (self.last_event_xCoord is None or self.last_event_yCoord is None):
             self.distance_from_last_event = self.compute_distance_from_last_event()
         self.rebound = False
-        if self.last_event_type == 'shot-on-goal':
+        if self.last_event_type == 'shot-on-goal' or self.last_event_type == 'blocked-shot':
             self.rebound = True
         self.distance_from_net = None
         self.angle_from_net = None
@@ -101,8 +101,14 @@ class Row:
         dot_product = net_prev[0] * net_current[0] + net_prev[1] * net_current[1]
         magnitude_prev = (net_prev[0]**2 + net_prev[1]**2)**0.5
         magnitude_current = (net_current[0]**2 + net_current[1]**2)**0.5
-        cos_angle = dot_product / (magnitude_prev * magnitude_current)
-        angle_radian = math.acos(cos_angle)
+        cos_angle = min(dot_product / (magnitude_prev * magnitude_current), 1)
+        try:
+            angle_radian = math.acos(cos_angle)
+        except ValueError:
+            print("cos_angle", cos_angle)
+            print("dot_product", dot_product)
+            print("game_id", self.game_id) 
+            print("event_id", self.event_id)
         angle = math.degrees(angle_radian)
         self.change_in_shot_angle = angle
         return angle
