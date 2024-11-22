@@ -40,7 +40,7 @@ class Row:
         if not (self.last_event_xCoord is None or self.last_event_yCoord is None):
             self.distance_from_last_event = self.compute_distance_from_last_event()
         self.rebound = False
-        if self.last_event_type == 'shot-on-goal' or self.last_event_type == 'blocked-shot':
+        if self.last_event_type == 'shot-on-goal' or self.last_event_type == 'blocked-shot' or self.last_event_type == 'missed-shot':
             self.rebound = True
         self.distance_from_net = None
         self.angle_from_net = None
@@ -101,7 +101,9 @@ class Row:
         dot_product = net_prev[0] * net_current[0] + net_prev[1] * net_current[1]
         magnitude_prev = (net_prev[0]**2 + net_prev[1]**2)**0.5
         magnitude_current = (net_current[0]**2 + net_current[1]**2)**0.5
-        cos_angle = min(dot_product / (magnitude_prev * magnitude_current), 1)
+        if magnitude_prev == 0 or magnitude_current == 0:
+            return None
+        cos_angle = max(min(dot_product / (magnitude_prev * magnitude_current), 1), -1)
         try:
             angle_radian = math.acos(cos_angle)
         except ValueError:
