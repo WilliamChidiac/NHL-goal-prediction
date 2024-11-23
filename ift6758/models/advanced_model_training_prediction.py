@@ -2,19 +2,13 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.axes as ax
-import os
 from typing import List, Tuple, Dict, Union, Optional, Any
-Number = Union[int, float]
-
-
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer, QuantileTransformer, FunctionTransformer
-from sklearn.feature_selection import SelectKBest, SelectPercentile, RFE
-from sklearn.decomposition import PCA
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import roc_curve, auc
 from sklearn.model_selection import StratifiedKFold as SKFold
-
+#import SVC
+from sklearn.svm import SVC
+SVC()
 
 def set_in_dict(d : dict, path : str, value : Any) -> Any:
     """ navigate in a dictionary using a path
@@ -145,7 +139,7 @@ def reliability_curve(y_true : np.ndarray, y_pred : np.ndarray, plot : bool = Tr
 class Transformation:
     
     
-    def __init__(self, build_instructions : Dict[str, Any], retrain : bool = False):
+    def __init__(self, build_instructions : Dict[str, Any], retrain : bool = False, verbose=[]):
         """ initialize the transformation
 
         Args:
@@ -161,6 +155,8 @@ class Transformation:
             }
         }
         """
+        if "transformation_init" in verbose:
+            print(f"initializing transformer for {build_instructions['transformation']}\n")
         transfor = build_instructions['transformation']
         params : dict = build_instructions.get('params', {})
         req_param = params.get('required', [])
@@ -173,7 +169,7 @@ class Transformation:
         self.pre_trained_x = None
         self.trained_x = None
     
-    def fit(self, x : np.ndarray, force_fit : bool = False):
+    def fit(self, x : np.ndarray, force_fit : bool = False, verbose = []):
         """ fit the transformation
 
         Args:
@@ -181,17 +177,17 @@ class Transformation:
             force_fit (bool, optional): if you want to force the fit. Defaults to False.
         """
         if not self.trained or force_fit:
-            try:
-                self.transformation.fit(x)
-            except:
-                pass
+            if "transformation_fit" in verbose:
+                print(f"fitting transformation\n")
+            self.transformation.fit(x)
+                # print('something went wrong')
             self.trained = True
             self.trained_x = None
             self.pre_trained_x = None
         if self.retrain:
             self.trained = False
 
-    def transform(self, x : np.ndarray) -> np.ndarray:
+    def transform(self, x : np.ndarray, verbose = []) -> np.ndarray:
         """ transform the data
 
         Args:
@@ -201,8 +197,12 @@ class Transformation:
             np.ndarray: the transformed data
         """
         if self.trained_x is not None and np.array_equal(x, self.pre_trained_x):
+            if "transformation_transform" in verbose:
+                print(f'using previously transformed data on transformation\n')
             return self.trained_x
         
+        if "transformation_transform" in verbose:
+            print(f'using previously transformed data on transformation\n')
         self.pre_trained_x = x
         new_x = self.transformation.transform(x)
         self.trained_x = new_x
@@ -210,7 +210,7 @@ class Transformation:
 
 class TransformationPipeline:
         
-    def __init__(self, steps : List[Dict[str, Any]], steps_to_iterate : Optional[str]= None):
+    def __init__(self, steps : List[Dict[str, Any]], steps_to_iterate : Optional[str]= None, verbose = []):
         """ initialize the transformation pipeline
 
         Args:
@@ -235,29 +235,33 @@ class TransformationPipeline:
             }
         ]
         """
+        if "transform_pipeline_init" in verbose:
+            print("initializing transformation pipeline.\n")
         self.cross_val_step = steps_to_iterate
         self.steps : Dict[int, Transformation] = {}
         retrain = False
         for i, step in enumerate(steps):
             if steps_to_iterate is not None and steps_to_iterate == i:
                 retrain = True
-            trans = Transformation(step, retrain)
+            trans = Transformation(step, retrain, verbose=verbose)
             self.steps[i] = trans
             
-    def fit(self, x : np.ndarray, force_fit : bool = False):
+    def fit(self, x : np.ndarray, force_fit : bool = False, verbose = []):
         """ fit the transformation pipeline
 
         Args:
             x (np.ndarray): the data to fit the pipeline on
             force_fit (bool, optional): if you want to force the fit. Defaults to False.
         """
+        if "transform_pipeline_fit" in verbose:
+            print("fitting the preprocessing pipeline.\n")
         X = x.copy()
         for i in range(len(self.steps)):
             step = self.steps[i]
-            step.fit(X, force_fit)
-            X = step.transform(X)
+            step.fit(X, force_fit, verbose=verbose)
+            X = step.transform(X, verbose=verbose)
         
-    def transform(self, x : np.ndarray) -> np.ndarray:
+    def transform(self, x : np.ndarray, verbose = []) -> np.ndarray:
         """ transform the data
 
         Args:
@@ -266,24 +270,28 @@ class TransformationPipeline:
         Returns:
             np.ndarray: the transformed data
         """
+        if "transform_pipeline_transform" in verbose:
+            print("transforming datausig the preprocessing pipeline.\n")
         X = x.copy()
         for step in self.steps.values():
-            X = step.transform(X)
+            X = step.transform(X, verbose=verbose)
         return X
     
-    def update_step(self, new_step : Dict[str, Any]):
+    def update_step(self, new_step : Dict[str, Any], verbose = []):
         """ update a step in the pipeline
 
         Args:
             new_step (Dict[str, Any]): the new step to replace the old one
         """
+        if "update_step" in verbose:
+            print(f"updated the {self.cross_val_step}-th step.\n")
         self.steps[self.cross_val_step] = Transformation(new_step, True)
         
 
 class Classifier:
     
     
-    def __init__(self, build_instructions : Dict[str, Any]):
+    def __init__(self, build_instructions : Dict[str, Any], verbose = []):
         """ initialize the classifier
 
         Args:
@@ -312,13 +320,15 @@ class Classifier:
             }
         }
         """
+        if "classfier_init" in verbose:
+            print(f"initializing classifier {build_instructions['model']} on data.\n ")
         model = build_instructions['model']
         params : dict = build_instructions.get('params', {})
         req_param = params.get('required', [])
         opt_param = params.get('optional', {})
         self.model = model(*req_param, **opt_param)
     
-    def fit(self, X: np.ndarray, y: np.ndarray, force_fit : bool = False):
+    def fit(self, X: np.ndarray, y: np.ndarray, verbose = []):
         """ fit the model
 
         Args:
@@ -326,9 +336,11 @@ class Classifier:
             y (np.ndarray): the labels
             force_fit (bool, optional): whethere or not you want to retrain the model even if it has already been trained. Defaults to False.
         """
+        if "classifier_fitting" in verbose:
+            print("fitting the calssifier")
         self.model.fit(X, y)
     
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, X: np.ndarray, verbose = []) -> np.ndarray:
         """ predict the labels
 
         Args:
@@ -337,6 +349,8 @@ class Classifier:
         Returns:
             np.ndarray: the predicted labels
         """
+        if "classifier_predict" in verbose:
+            print("predicting clasifier values.\n")
         return self.model.predict(X)
     
 class CrossValidation:
@@ -360,7 +374,7 @@ class CrossValidation:
             CrossValidation.cross_val_split.append((X_train, X_val, y_train, y_val))
     
     
-    def __init__(self, build_instructions : Dict[str, Any]):
+    def __init__(self, build_instructions : Dict[str, Any], verbose = []):
         """ initialize the cross validation
 
         Args:
@@ -412,18 +426,20 @@ class CrossValidation:
             }
         }
         """
+        if "cross_val_init" in verbose:
+            print("creating cross val pipeline for split.\n")
         model = build_instructions['model']
         transformation = build_instructions['transformation']
         hyperparameter = build_instructions['hyperparameter']
         hyperparameter_path : str = hyperparameter['path']
-        self.model = Classifier(model)
+        self.model = Classifier(model, verbose=verbose)
         step = hyperparameter_path.split('.')[1]
         if hyperparameter_path is not None and 'transformation' in  hyperparameter_path:
-            self.transformation = TransformationPipeline(transformation, int(step))
+            self.transformation = TransformationPipeline(transformation, int(step), verbose=verbose)
         else:
-            self.transformation = TransformationPipeline(transformation)
+            self.transformation = TransformationPipeline(transformation, verbose=verbose)
     
-    def fit(self, X_train: np.ndarray, y_train: np.ndarray, force_fit : bool = False):
+    def fit(self, X_train: np.ndarray, y_train: np.ndarray, force_fit : bool = False, verbose = []):
         """ fit the cross validation
 
         Args:
@@ -431,11 +447,13 @@ class CrossValidation:
             y_train (np.ndarray): the labels
             force_fit (bool, optional): whethere or not everything should be retrained. Defaults to False.
         """
-        self.transformation.fit(X_train, force_fit)
-        X_trans = self.transformation.transform(X_train)
-        self.model.fit(X_trans, y_train, force_fit)
+        if "cross_val_fit" in verbose:
+            print("fitting preprocessing + model.\n")
+        self.transformation.fit(X_train, force_fit, verbose=verbose)
+        X_trans = self.transformation.transform(X_train, verbose=verbose)
+        self.model.fit(X_trans, y_train, verbose=verbose)
         
-    def predict(self, X_val: np.ndarray) -> np.ndarray:
+    def predict(self, X_val: np.ndarray, verbose = []) -> np.ndarray:
         """ predict the labels
 
         Args:
@@ -444,11 +462,13 @@ class CrossValidation:
         Returns:
             np.ndarray: the predicted labels
         """
-        X_trans = self.transformation.transform(X_val)
-        return self.model.predict(X_trans)
+        if 'cross_val_predict' in verbose:
+            print("generating : transform + prediction \n")
+        X_trans = self.transformation.transform(X_val, verbose=verbose)
+        return self.model.predict(X_trans, verbose=verbose)
     
     @staticmethod
-    def cross_validate(build_instructions : Dict[str, Any]):
+    def cross_validate(build_instructions : Dict[str, Any], verbose = []):
         """ cross validate the model
 
         Args:
@@ -461,6 +481,8 @@ class CrossValidation:
         list_metrics = ((roc_auc_res, roc_auc), (gr_vs_p_res, goal_rate_vs_percentile), (cg_vs_p_res, cumulative_goals_vs_percentile), (rc_res, reliability_curve))
         total_results = {}
         for value in values:
+            if "cross_val_hyper" in verbose:
+                print(f"train + prediction for hyperparameter value : {value}")
             metrics = {
                 roc_auc_res: [],
                 gr_vs_p_res: [],
@@ -471,9 +493,11 @@ class CrossValidation:
             cv = CrossValidation(build_instructions)
             y_preds = np.array([])
             y_trues = np.array([])
-            for X_train, X_val, y_train, y_val in CrossValidation.cross_val_split:
-                cv.fit(X_train, y_train, force_fit=True)
-                y_pred = cv.predict(X_val)
+            for i, (X_train, X_val, y_train, y_val) in enumerate(CrossValidation.cross_val_split):
+                if 'cross_val_split' in verbose:
+                    print(f'on split : {i}')
+                cv.fit(X_train, y_train, force_fit=True, verbose=verbose)
+                y_pred = cv.predict(X_val, verbose=verbose)
                 y_preds = np.concatenate((y_preds, y_pred))
                 y_trues = np.concatenate((y_trues, y_val))
             for metric, func in list_metrics:
