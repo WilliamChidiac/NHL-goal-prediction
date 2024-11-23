@@ -10,7 +10,7 @@ class FeatureEngineeringII:
             self.df = data.copy(deep=True)
         else:
             self.df = PreprocessII.get_games_df(data)
-        self.irrelevant_columns = ["event_id", "game_id", "away_team_id", "flagged"]
+        self.irrelevant_columns = ["event_id", "game_id", "away_team_id", "flagged", "season"]
         
     def remove_irrelevant_columns(self):
         """remove irrelevant columns from the dataframe

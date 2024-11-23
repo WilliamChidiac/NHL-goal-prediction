@@ -20,6 +20,7 @@ class Row:
     
     def __init__(self, shot : ShotsEvent, game : Game):
         self.game_id = game.get_id()
+        self.season = game.get_season()
         self.home_team_id = game.get_home_data()[0]
         self.away_team_id = game.get_away_data()[0]
         self.event_id = shot.get_event_id()

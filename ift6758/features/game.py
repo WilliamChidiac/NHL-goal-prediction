@@ -58,6 +58,14 @@ class Game(JsonToObject):
             print("Error: game id not found")
             print(self.to_dict())
             print(Game.games)
+    
+    def get_season(self) -> int:
+        """get game season
+
+        Returns:
+            int : game season
+        """
+        return self.season
 
     def get_date(self) -> str:
         """get game date
