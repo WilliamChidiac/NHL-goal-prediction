@@ -8,12 +8,30 @@ from pathlib import Path
 from sklearn.base import BaseEstimator
 
 class WandbHandler:
+    """
+    A class to handle interactions with Weights and Biases (wandb) for downloading and logging artifacts.
+
+    Attributes:
+        project_name (str): The name of the wandb project.
+        artifact_root_path (Path): The root path for storing artifacts locally.
+        api (wandb.Api): The wandb API object for interacting with wandb.
+    """
     def __init__(self, project_name="IFT6758-2024-B05", artifact_root_path="../ift6758/data/wandb_artifacts/"):
         self.project_name = project_name
         self.artifact_root_path = Path(artifact_root_path)
         self.api = wandb.Api()
 
     def download_artifact(self, artifact_name, artifact_version):
+        """
+        Downloads a specified artifact from wandb and saves it to a local directory.
+
+        Args:
+            artifact_name (str): The name of the artifact to download.
+            artifact_version (str): The version of the artifact to download.
+
+        Returns:
+            Path: The local directory where the artifact is saved.
+        """
         artifact = self.api.artifact(f"{self.project_name}/{artifact_name}:{artifact_version}")
         artifact_dir = self.artifact_root_path / artifact_name
         if not os.path.exists(artifact_dir):
@@ -23,6 +41,14 @@ class WandbHandler:
         return artifact_dir
 
     def log_artifact(self, artifact_name, artifact_type, file_path):
+        """
+        Logs a specified file as an artifact to wandb.
+
+        Args:
+            artifact_name (str): The name of the artifact.
+            artifact_type (str): The type of the artifact (e.g., 'model', 'dataset').
+            file_path (str): The path to the file to log as an artifact.
+        """
         run = wandb.init(project=self.project_name)
         artifact = wandb.Artifact(artifact_name, type=artifact_type)
         artifact.add_file(file_path)
@@ -38,7 +64,6 @@ class WandbHandler:
             artifact_name (str): The name of the artifact.
             run_name (str): The name of the wandb run.
             description (str): A description of the artifact.
-            tags (list): A list of tags to add to the artifact.
         """
         with wandb.init(name=run_name, project=self.project_name, job_type="upload-data") as run:
             artifact = wandb.Artifact(artifact_name, type='dataset', description=description)
@@ -57,12 +82,32 @@ class DataLoader(WandbHandler):
         super().__init__(project_name, artifact_root_path)
 
     def convert_artifact_to_df(self, file_path):
+        """
+        Converts a JSON file to a pandas DataFrame.
+
+        Args:
+            file_path (str): The path to the JSON file.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the data from the JSON file.
+        """
         with open(file_path, "r") as file:
             table = json.load(file)
         df = pd.DataFrame(data=table['data'], columns=table['columns'])
         return df
 
     def load_season_dataframe(self, artifact_name, artifact_version, season, download_artifact=True):
+        """
+        Loads a DataFrame for a given season from a wandb artifact.
+
+        Args:
+            artifact_name (str): The name of the artifact.
+            artifact_version (str): The version of the artifact.
+            season (str): The season to load (format 'YYYY-YYYY').
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the data for the specified season.
+        """
         assert isinstance(season, str) and len(season) == 9 and season[4] == '-', "Season format should be 'YYYY-YYYY'"
         if download_artifact:
             self.download_artifact(artifact_name, artifact_version)
@@ -73,6 +118,17 @@ class DataLoader(WandbHandler):
         return df
 
     def load_seasons_dataframe(self, artifact_name, artifact_version, seasons):
+        """
+        Loads DataFrames for multiple seasons from a wandb artifact and concatenates them.
+
+        Args:
+            artifact_name (str): The name of the artifact.
+            artifact_version (str): The version of the artifact.
+            seasons (list of str): List of seasons to load (format 'YYYY-YYYY').
+
+        Returns:
+            pd.DataFrame: A concatenated DataFrame containing the data for the specified seasons.
+        """
         dataframes = []
         self.download_artifact(artifact_name, artifact_version)
         for season in seasons:
@@ -81,6 +137,16 @@ class DataLoader(WandbHandler):
         return pd.concat(dataframes, ignore_index=True)
 
     def load_all_files_from_artifact(self, artifact_name, artifact_version):
+        """
+        Loads all JSON files from a wandb artifact and concatenates them into a single DataFrame.
+
+        Args:
+            artifact_name (str): The name of the artifact.
+            artifact_version (str): The version of the artifact.
+
+        Returns:
+            pd.DataFrame: A concatenated DataFrame containing the data from all JSON files in the artifact.
+        """
         artifact_dir = self.download_artifact(artifact_name, artifact_version)
         dataframes = []
         for file_name in artifact_dir.iterdir():
@@ -95,15 +161,43 @@ class ModelHandler(WandbHandler):
         self.model_root_path = Path(model_root_path)
 
     def dump(self, model: BaseEstimator, model_name: str):
+        """
+        Saves the trained model to disk.
+
+        Args:
+            model (BaseEstimator): The trained model.
+            model_name (str): The name of the model.
+        """
         model_path = self.model_root_path / Path(f"{model_name}.pkl")
         joblib.dump(model, model_path)
     
     def predict(self, model, X_eval):
+        """
+        Makes predictions using the trained model.
+
+        Args:
+            model (BaseEstimator): The trained model.
+            X_eval (np.array): The evaluation features.
+
+        Returns:
+            tuple: A tuple containing the discrete predictions and the predicted probabilities.
+        """
         y_pred_discrete = model.predict(X_eval)
         y_pred_proba = model.predict_proba(X_eval)
         return y_pred_discrete, y_pred_proba
 
     def get_metrics(self, y_pred_discrete, y_pred_proba, y_eval):
+        """
+        Calculates evaluation metrics for the model.
+
+        Args:
+            y_pred_discrete (np.array): The discrete predictions.
+            y_pred_proba (np.array): The predicted probabilities.
+            y_eval (np.array): The evaluation labels.
+
+        Returns:
+            dict: A dictionary containing the evaluation metrics.
+        """
         metrics = {
             "auc": roc_auc_score(y_eval, y_pred_proba[:, 1]),
             "accuracy": accuracy_score(y_eval, y_pred_discrete),
@@ -119,7 +213,6 @@ class ModelHandler(WandbHandler):
 
         Args:
             model_name (str): Name of the model.
-            model_path (str): Path to save the model.
             X_eval (np.array): Evaluation features.
             y_eval (np.array): Evaluation labels.
             features (list): List of feature names.
@@ -143,6 +236,18 @@ class ModelHandler(WandbHandler):
             run.log_artifact(artifact)
 
     def load_model(self, model_name, model_version):
+        """
+        Loads a model from wandb and reproduces results.
+
+        Args:
+            artifact_name (str): Name of the artifact.
+            artifact_version (str): Version of the artifact.
+            X_eval (np.array): Evaluation features.
+            y_eval (np.array): Evaluation labels.
+
+        Returns:
+            dict: Evaluation metrics.
+        """
         model = None
         with wandb.init(project=self.project_name) as run:
             model_artifact = run.use_artifact(f'{model_name}:{model_version}', type='model')
