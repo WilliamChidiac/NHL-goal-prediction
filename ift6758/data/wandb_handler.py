@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import json
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from pathlib import Path
 from sklearn.base import BaseEstimator
 
@@ -103,8 +103,9 @@ class ModelHandler(WandbHandler):
         y_pred_proba = model.predict_proba(X_eval)
         return y_pred_discrete, y_pred_proba
 
-    def get_metrics(self, y_pred_discrete, y_eval):
+    def get_metrics(self, y_pred_discrete, y_pred_proba, y_eval):
         metrics = {
+            "auc": roc_auc_score(y_eval, y_pred_proba[:, 1]),
             "accuracy": accuracy_score(y_eval, y_pred_discrete),
             "precision": precision_score(y_eval, y_pred_discrete),
             "recall": recall_score(y_eval, y_pred_discrete),
@@ -127,7 +128,7 @@ class ModelHandler(WandbHandler):
         model = joblib.load(model_path) # load and predict to ensure model is correctly stored
         y_pred_discrete, y_pred_proba = self.predict(model, X_eval)
         with wandb.init(project=self.project_name) as run:
-            metrics = self.get_metrics(y_pred_discrete, y_eval)
+            metrics = self.get_metrics(y_pred_discrete, y_pred_proba, y_eval)
             run.log({"confusion_matrix": wandb.plot.confusion_matrix(probs=None,
                                                                     y_true=y_eval.flatten().tolist(),
                                                                     preds=y_pred_discrete.flatten().tolist(),
