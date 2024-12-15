@@ -257,4 +257,16 @@ class ModelHandler(WandbHandler):
         return model
     
 
-    
+    def get_model_list(self):
+        """
+        https://stackoverflow.com/questions/68952727/wandb-get-a-list-of-all-artifact-collections-and-all-aliases-of-those-artifacts
+        
+        Retrieves a list of all models logged in the wandb project.
+
+        Returns:
+            list: A list of model names.
+        """
+        collections = [
+            coll for coll in self.api.artifact_type(type_name="model", project=self.project_name).collections()
+        ]
+        return [artifact.name for coll in collections for artifact in coll.artifacts()]
