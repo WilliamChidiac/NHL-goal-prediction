@@ -16,7 +16,7 @@ class WandbHandler:
         artifact_root_path (Path): The root path for storing artifacts locally.
         api (wandb.Api): The wandb API object for interacting with wandb.
     """
-    def __init__(self, project_name="IFT6758-2024-B05", artifact_root_path="../ift6758/data/wandb_artifacts/"):
+    def __init__(self, project_name="IFT6758-2024-B05", artifact_root_path="../ift6758/ift6758/data/wandb_artifacts/"):
         self.project_name = project_name
         self.artifact_root_path = Path(artifact_root_path)
         self.api = wandb.Api()
@@ -78,8 +78,8 @@ class WandbHandler:
 
 
 class DataLoader(WandbHandler):
-    def __init__(self, project_name="IFT6758-2024-B05", artifact_root_path="../ift6758/data/wandb_artifacts/"):
-        super().__init__(project_name, artifact_root_path)
+    def __init__(self):
+        super().__init__()
 
     def convert_artifact_to_df(self, file_path):
         """
@@ -156,8 +156,8 @@ class DataLoader(WandbHandler):
         return pd.concat(dataframes, ignore_index=True)
 
 class ModelHandler(WandbHandler):
-    def __init__(self, model_root_path="../ift6758/models/"):
-        super().__init__(artifact_root_path="../ift6758/data/wandb_artifacts/")
+    def __init__(self, model_root_path="../ift6758/ift6758/models/"):
+        super().__init__()
         self.model_root_path = Path(model_root_path)
 
     def dump(self, model: BaseEstimator, model_name: str):
@@ -251,7 +251,7 @@ class ModelHandler(WandbHandler):
         model = None
         with wandb.init(project=self.project_name) as run:
             model_artifact = run.use_artifact(f'{model_name}:{model_version}', type='model')
-            model_dir = model_artifact.download()
+            model_dir = model_artifact.download(root=str(self.model_root_path / model_name))
             model_path = Path(model_dir) / Path(f"{model_name}.pkl")
             model = joblib.load(model_path)
         return model
