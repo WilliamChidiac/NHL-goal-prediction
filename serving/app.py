@@ -15,7 +15,7 @@ predict= lambda model, game_id : 0+game_id if model == 'workspace1/model1:v1' el
                                 (3+game_id if model == 'workspace2/model3:v1' else \
                                 (4+game_id if model == 'workspace2/model4:v1' else \
                                 (5+game_id if model == 'workspace2/model4:v2' else -1)))))
-# from ift6758 import load_model, get_model_names, predict
+# from ift6758 import load_model, get_model_names, predict, get_workspace_lists
 
 FLASK_LOG = os.environ.get('FLASK_LOG', 'flask.log')
 FLASK_RUN_HOST = os.environ.get('FLASK_RUN_HOST', '0.0.0.0')
