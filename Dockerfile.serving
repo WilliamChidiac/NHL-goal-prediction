@@ -1,0 +1,21 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY ./ift6758 /app/ift6758
+COPY ./serving /app/serving
+
+# RUN pip install --no-cache-dir -e ift6758
+RUN pip install --no-cache-dir -r /app/serving/requirements.txt
+
+EXPOSE 5000
+
+ENV FLASK_APP=/app/serving/app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+
+WORKDIR /app/serving
+
+CMD ["python", "app.py"]
+
+
+
