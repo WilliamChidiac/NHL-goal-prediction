@@ -134,6 +134,14 @@ class ShotsEvent(Event):
             str: the event type
         """
         return self.typeDescKey
+
+    def get_situation_code(self) -> str:
+        """get the situation code
+
+        Returns:
+            str: the situation code
+        """
+        return self.situationCode
     
     def get_shot_type(self) -> str:
         """get the shot type
@@ -187,6 +195,7 @@ class ShotOnGoal(ShotsEvent):
 
     attributes = [
         "details.shootingPlayerId",
+        "situationCode"
     ]
 
     def __init__(self, game: Game, event_json: Dict[str, Any], verbose: bool = False):
@@ -205,6 +214,7 @@ class Goal(ShotsEvent):
 
     attributes = [
         "details.scoringPlayerId",
+        "situationCode"
     ]
 
     def __init__(self, game: Game, event_json: Dict[str, Any], verbose: bool = False):

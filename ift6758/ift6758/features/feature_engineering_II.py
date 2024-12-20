@@ -10,7 +10,7 @@ class FeatureEngineeringII:
             self.df = data.copy(deep=True)
         else:
             self.df = PreprocessII.get_games_df(data)
-        self.irrelevant_columns = ["event_id", "game_id", "away_team_id", "flagged", "season"]
+        self.irrelevant_columns = ["away_team_id", "flagged", "season"]
         
     def remove_irrelevant_columns(self):
         """remove irrelevant columns from the dataframe
@@ -138,15 +138,63 @@ class FeatureEngineeringII:
                     print(f"Error on column : {column}")
                     print(f" row : {self.df[column]}")
                     raise e
+              
+    def keep_columns(self, columns: List[str]):
+        """keep only the specified columns in the dataframe
+
+        Args:
+            columns (List[str]): the list of columns to keep
+        """
+        self.df = self.df[columns]
+
     
-    def clean_df(self, remove_irrelevant=True):    
+    def extract_empty_net_feature(self, df):
+        """
+        Extracts the empty net feature from the situationCode and eventOwnerTeamId.
+
+        Args:
+            df (pd.DataFrame): DataFrame containing the game data.
+
+        Returns:
+            pd.DataFrame: DataFrame with the empty net feature added.
+        """
+        def is_empty_net(row):
+            situation_code = str(row['situation_code']).zfill(4)
+            event_owner_team_id = row['owner_team_id']
+            
+            # Parse the situation code
+            away_goalie_on_ice = situation_code[0] == '1'
+            away_skaters = int(situation_code[1])
+            home_skaters = int(situation_code[2])
+            home_goalie_on_ice = situation_code[3] == '1'
+            
+            # Determine if the goal was scored into an empty net
+            if event_owner_team_id == row['away_team_id']:
+                # Away team scored
+                return 1 if not home_goalie_on_ice else 0
+            elif event_owner_team_id == row['home_team_id']:
+                # Home team scored
+                return 1 if not away_goalie_on_ice else 0
+            else:
+                return 0
+
+        # Apply the function to each row
+        df['empty_net'] = df.apply(is_empty_net, axis=1)
+        
+        # Fill NaNs with 0
+        df['empty_net'].fillna(0, inplace=True)
+        return df
+
+    def clean_df(self, remove_irrelevant=False, columns=None):    
         """clean the dataframe by removing irrelevant columns, adding labels, numerising the columns and aligning the coordinates
         """
         self.replace_na()
         self.add_labels()
         self.numerise_zoneCode(one_hot_encode=False)
         self.numerise_shotType(one_hot_encode=True)
-        self.numerise_previous_event(one_hot_encode=True)
+        # self.numerise_previous_event(one_hot_encode=True)
         self.align_coord()
+        self.extract_empty_net_feature(self.df)
+        self.keep_columns(columns)
         if remove_irrelevant:
             self.remove_irrelevant_columns()

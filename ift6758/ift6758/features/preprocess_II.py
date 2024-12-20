@@ -26,6 +26,7 @@ class Row:
         self.event_id = shot.get_event_id()
         self.owner_team_id = shot.get_owner_team_id()
         self.event_type = shot.get_event_type()
+        self.situation_code = shot.get_situation_code()
         self.shot_type = shot.get_shot_type()
         self.time_period, self.period_number = shot.get_period_info()
         self.time_period = int(self.time_period.split(":")[0]) * 60 + int(self.time_period.split(":")[1])
@@ -259,4 +260,21 @@ class PreprocessII:
             for id in games:
                 data = PreprocessII(id)
                 data.to_dataframe()
+        return PreprocessII.games_df
+
+    @staticmethod
+    def get_game_df(game_id, reset_df : bool = True) -> pd.DataFrame:
+        """get the games dataframe
+
+        Args:
+            seasons (List[int]): the list of seasons
+
+        Returns:
+            pd.DataFrame: the games dataframe
+        """
+        if reset_df:
+            PreprocessII.clear_games_df()
+            
+        data = PreprocessII(game_id)
+        data.to_dataframe()
         return PreprocessII.games_df
