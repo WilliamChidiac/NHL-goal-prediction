@@ -16,6 +16,7 @@ predict= lambda model, game_id : 0+game_id if model == 'workspace1/model1:v1' el
                                 (4+game_id if model == 'workspace2/model4:v1' else \
                                 (5+game_id if model == 'workspace2/model4:v2' else -1)))))
 # from ift6758 import load_model, get_model_names, predict, get_workspace_lists
+from ift6758.data.light_wandb_handler import LightWandbHandler
 
 FLASK_LOG = os.environ.get('FLASK_LOG', 'flask.log')
 FLASK_RUN_HOST = os.environ.get('FLASK_RUN_HOST', '0.0.0.0')
@@ -27,6 +28,7 @@ workspaces = {}
 selections = False
 current_model = None
 fmt = lambda msg, code : f'{msg}   -   status code : {code}'
+wandb_handler = LightWandbHandler()
 
 def build_selections():
     ##get list of models from wandb

@@ -16,8 +16,8 @@ class LightWandbHandler:
     """
     def __init__(self):
         self.model_root_path =  Path("../ift6758/ift6758/models/")
-        self.api = wandb.Api()
         self.login()
+        self.api = wandb.Api()
     
     def login(self):
         """

@@ -5,7 +5,7 @@ WORKDIR /app
 COPY ./ift6758 /app/ift6758
 COPY ./serving /app/serving
 
-# RUN pip install --no-cache-dir -e ift6758
+RUN pip install --no-cache-dir -e ift6758
 RUN pip install --no-cache-dir -r /app/serving/requirements.txt
 
 EXPOSE 5000
