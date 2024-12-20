@@ -5,16 +5,16 @@ from random import randrange
 import os
 
 
-load_model = lambda w, m, v : str(w) + '/' +  str(m) + ':' + str(v)
-get_model_names = lambda workspace: ['model1:v1', 'model2:v1', 'model2:v2'] if workspace == 'workspace1' else \
-                                    ['model3:v1', 'model4:v1', 'model4:v2']
-get_workspace_lists = lambda : ['workspace1', 'workspace2']
-predict= lambda model, game_id : 0+game_id if model == 'workspace1/model1:v1' else \
-                                (1+game_id if model == 'workspace1/model2:v1' else \
-                                (2+game_id if model == 'workspace1/model2:v2' else \
-                                (3+game_id if model == 'workspace2/model3:v1' else \
-                                (4+game_id if model == 'workspace2/model4:v1' else \
-                                (5+game_id if model == 'workspace2/model4:v2' else -1)))))
+# load_model = lambda w, m, v : str(w) + '/' +  str(m) + ':' + str(v)
+# get_model_names = lambda workspace: ['model1:v1', 'model2:v1', 'model2:v2'] if workspace == 'workspace1' else \
+#                                     ['model3:v1', 'model4:v1', 'model4:v2']
+# get_workspace_lists = lambda : ['workspace1', 'workspace2']
+# predict= lambda model, game_id : 0+game_id if model == 'workspace1/model1:v1' else \
+#                                 (1+game_id if model == 'workspace1/model2:v1' else \
+#                                 (2+game_id if model == 'workspace1/model2:v2' else \
+#                                 (3+game_id if model == 'workspace2/model3:v1' else \
+#                                 (4+game_id if model == 'workspace2/model4:v1' else \
+#                                 (5+game_id if model == 'workspace2/model4:v2' else -1)))))
 # from ift6758 import load_model, get_model_names, predict, get_workspace_lists
 from ift6758.data.light_wandb_handler import LightWandbHandler
 
@@ -27,18 +27,19 @@ logger = None
 workspaces = {}
 selections = False
 current_model = None
+current_model_name = None
 fmt = lambda msg, code : f'{msg}   -   status code : {code}'
 wandb_handler = LightWandbHandler()
 
 def build_selections():
     ##get list of models from wandb
     try:
-        repos = get_workspace_lists()
+        repos = wandb_handler.get_workspace_lists()
     except:
         logger.error('Missing WANDB_API_KEY')
         return False
     for workspace in repos:
-        models = get_model_names(workspace)
+        models = wandb_handler.get_model_names(workspace)
         list_models = {}
         for model in models:
             name, version = model.split(':')
@@ -142,12 +143,13 @@ def download_registry_model():
             model = workspaces[workspace][model_name][version]
             if model is None:
                 response = f"Downloading model {workspace}/{model_name}:{version}"
-                model = load_model(workspace, model_name, version)
+                model = wandb_handler.load_model(workspace, model_name, version)
                 workspaces[workspace][model_name][version] = model
             else :
                 response = f"Model {workspace}/{model_name}:{version} already downloaded"
             code = 200
             current_model = model
+            current_model_name = model_name
         app.logger.info(fmt(response, code))
         return jsonify({'response': response}), code
     except Exception as e:
@@ -189,9 +191,10 @@ def model_predict():
     else:
         code = 200
         print(current_model)
-        predictions = predict(current_model, game_id)
+        y_pred_discrete, y_pred_proba, y_true = wandb_handler.predict(current_model_name, current_model, game_id)
+        metrics = wandb_handler.get_metrics(y_pred_discrete, y_pred_proba, y_true)
         response = {
-            'results': predictions
+            'results': y_pred_proba
         }
     
 
