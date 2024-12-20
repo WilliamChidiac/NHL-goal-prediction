@@ -1,29 +1,58 @@
-from flask import Flask, request, jsonify, session, redirect, url_for
+from flask import Flask, request, jsonify
 from logging.handlers import RotatingFileHandler
 import logging
+from random import randrange
 import os
-from ift6758 import load_model, get_model_names
+
+
+load_model = lambda w, m, v : str(w) + '/' +  str(m) + ':' + str(v)
+get_model_names = lambda workspace: ['model1:v1', 'model2:v1', 'model2:v2'] if workspace == 'workspace1' else \
+                                    ['model3:v1', 'model4:v1', 'model4:v2']
+get_workspace_lists = lambda : ['workspace1', 'workspace2']
+predict= lambda model, game_id : 0+game_id if model == 'workspace1/model1:v1' else \
+                                (1+game_id if model == 'workspace1/model2:v1' else \
+                                (2+game_id if model == 'workspace1/model2:v2' else \
+                                (3+game_id if model == 'workspace2/model3:v1' else \
+                                (4+game_id if model == 'workspace2/model4:v1' else \
+                                (5+game_id if model == 'workspace2/model4:v2' else -1)))))
+# from ift6758 import load_model, get_model_names, predict
 
 FLASK_LOG = os.environ.get('FLASK_LOG', 'flask.log')
+FLASK_RUN_HOST = os.environ.get('FLASK_RUN_HOST', '0.0.0.0')
+FLASK_RUN_PORT = os.environ.get('FLASK_RUN_PORT', 5000)
+WANDB_API_KEY = os.environ.get('WANDB_API_KEY', None)
 app = Flask(__name__)
 logger = None
-downloaded_models = {}
-loaded_model = None
-loaded_model_name = None
-names = None
+workspaces = {}
+selections = False
+current_model = None
+fmt = lambda msg, code : f'{msg}   -   status code : {code}'
 
-def build_model_name(workspace, model, version):
-    name = f"{workspace}/{model}:{version}"
-    return name
+def build_selections():
+    ##get list of models from wandb
+    try:
+        repos = get_workspace_lists()
+    except:
+        logger.error('Missing WANDB_API_KEY')
+        return False
+    for workspace in repos:
+        models = get_model_names(workspace)
+        list_models = {}
+        for model in models:
+            name, version = model.split(':')
+            try:
+                list_models[name][version] = None
+            except KeyError:
+                list_models[name] = {version: None}
+        workspaces[workspace] = list_models
+    return True
 
-@app.before_first_request
+@app.before_request
 def app_init():
     # Create a logger object
     global logger
-    global downloaded_models
-    global loaded_model
-    global names
-    global loaded_model_name
+    global selections
+    global workspaces
     
     logger = logging.getLogger('backend')
     logger.setLevel(logging.INFO)
@@ -39,29 +68,32 @@ def app_init():
     # Add the handler to the logger
     logger.addHandler(handler)
     
-    
-    ##get list of models from wandb
-    names = get_model_names()
-    downloaded_models = { name : None for name in names}
-    loaded_model = None
-    
-    ##load default model
-    logger.info('Loading default model')
-    loaded_model = load_model(names[0])
-    loaded_model_name = names[0]
-    downloaded_models[names[0]] = loaded_model
-    logger.info(f'Model {names[0]} loaded')
-
-@app.route('/')
-def home():
-    logger.info('Home page accessed')
-    return 'Hello World!'
+    selections = build_selections()
+    app.logger = logger
 
 @app.route('/logs', methods=['GET'])
-def login():
-    with open('app.log', 'r') as f:
+def log():
+    with open(FLASK_LOG, 'r') as f:
         data = f.read().splitlines()
     return jsonify(data)
+
+@app.route('/login/<apikey>', methods=['GET'])
+def login(apikey):
+    WANDB_API_KEY = apikey
+    os.environ['WANDB_API_KEY'] = apikey
+    if build_selections():
+        app.logger.info(fmt('Login successful', 200))
+        return jsonify({'apikey': WANDB_API_KEY}), 200
+    else:
+        app.logger.error(fmt('Invalid API key', 401))
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+@app.route('/is_login', methods=['GET'])
+def is_login():
+    if WANDB_API_KEY is None:
+        return jsonify({'login': False}), 200
+    else:
+        return jsonify({'login': True}), 200
 
 
 @app.route("/download_registry_model", methods=["POST"])
@@ -81,44 +113,60 @@ def download_registry_model():
         }
     
     """
-    global downloaded_models
+    global workspaces
     global logger
-    global loaded_model
-    global loaded_model_name
-    global names
-    # Get POST json data
-    json = request.get_json()
-    app.logger.info(json)
-
-    # TODO: check to see if the model you are querying for is already downloaded
-    name = build_model_name(json['workspace'], json['model'], json['version'])
-    model = downloaded_models.get(name, model)
-    # TODO: if yes, load that model and write to the log about the model change.  
-    # eg: app.logger.info(<LOG STRING>)
-    if model:
-        response = f"Model {name} already downloaded"
-        loaded_model = model
-        logger.info(response)
-    # TODO: if no, try downloading the model: if it succeeds, load that model and write to the log
-    # about the model change. If it fails, write to the log about the failure and keep the 
-    # currently loaded model
-    else:
-        if name not in names:
-            response = f"Model {name} not found keeping current model {loaded_model}"
-            logger.info(response)
+    global current_model
+    try:
+        # Get POST json data
+        json = request.get_json()
+        app.logger.info(json)
+        workspace = json.get('workspace', None)
+        model_name = json.get('model', None)
+        version = json.get('version', None)
+        # TODO: check to see if the model you are querying for is already downloaded
+        if workspace is None or model_name is None or version is None:
+            response = "Workspace, model, and version must be provided"
+            code = 400
+        if workspace not in workspaces:
+            response = f"Workspace {workspace} not found"
+            code = 404
+        elif model_name not in workspaces[workspace]:
+            response = f"Model {model_name} not found in workspace {workspace}"
+            code = 404
+        elif version not in workspaces[workspace][model_name]:
+            response = f"Version {version} not found for model {workspace}/{model_name}"
+            code = 404
         else:
-            response = f"Downloading model {name}"
-            logger.info(response)
-            model = load_model(name)
-            downloaded_models[name] = model
-            loaded_model = model
-            logger.info(f'Model {name} loaded')
-    return jsonify(response)  # response must be json serializable!
+            model = workspaces[workspace][model_name][version]
+            if model is None:
+                response = f"Downloading model {workspace}/{model_name}:{version}"
+                model = load_model(workspace, model_name, version)
+                workspaces[workspace][model_name][version] = model
+            else :
+                response = f"Model {workspace}/{model_name}:{version} already downloaded"
+            code = 200
+            current_model = model
+        app.logger.info(fmt(response, code))
+        return jsonify({'response': response}), code
+    except Exception as e:
+        logger.error(fmt(str(e), 500))
+        return jsonify({'error': str(e), "workspace": workspace, "model_name" : model_name, "version" : version}), 500
 
+@app.route("/workspaces/all", methods=["GET"])
+def list_workspaces():
+    """
+    Handles GET requests made to http://IP_ADDRESS:PORT/workspaces/all
 
+    Returns a list of workspaces
+    """
+    global workspaces
+    all_selections = workspaces.copy()
+    for workspace in all_selections:
+        all_selections[workspace] = {model: list(versions.keys()) for model, versions in all_selections[workspace].items()}
+    return jsonify(all_selections), 200
 
 @app.route("/predict", methods=["POST"])
-def predict():
+def model_predict():
     """
     Handles POST requests made to http://IP_ADDRESS:PORT/predict
 
@@ -129,23 +177,26 @@ def predict():
     app.logger.info(json)
 
     game_id = json.get('game_id', None)
-    shot_id = json.get('shot_id', None)
     
     response = None
-    if game_id is None or shot_id is None:
+    if game_id is None:
+        code = 400
         response = {
-            'error': 'game_id and game_state must be provided'
+            'error': 'game_id must be provided'
         }
     else:
-        prediction = loaded_model.predict(game_id, shot_id)
+        code = 200
+        print(current_model)
+        predictions = predict(current_model, game_id)
         response = {
-            'prediction': prediction
+            'results': predictions
         }
     
 
-    app.logger.info(response)
-    return jsonify(response)  # response must be json serializable!
+    app.logger.info(fmt(response, code))
+    return jsonify(response), code # response must be json serializable!
 
 
 if __name__ == '__main__':
-    app.run()
+    print('Starting Flask app')
+    app.run(host=FLASK_RUN_HOST, port=FLASK_RUN_PORT)
