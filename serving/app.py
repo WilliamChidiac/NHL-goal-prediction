@@ -34,21 +34,23 @@ wandb_handler = LightWandbHandler()
 def build_selections():
     ##get list of models from wandb
     try:
-        repos = wandb_handler.get_workspace_lists()
-    except:
-        logger.error('Missing WANDB_API_KEY')
+        repos = wandb_handler.get_workspaces_lists()
+        logger.info(f'Workspaces: {repos}')
+        for workspace in repos:
+            models = wandb_handler.get_model_names(workspace)
+            list_models = {}
+            for model in models:
+                name, version = model.split(':')
+                try:
+                    list_models[name][version] = None
+                except KeyError:
+                    list_models[name] = {version: None}
+            if list_models != {}:
+                workspaces[workspace] = list_models
+        return True
+    except Exception as e:
+        logger.error(fmt(str(e), 500))
         return False
-    for workspace in repos:
-        models = wandb_handler.get_model_names(workspace)
-        list_models = {}
-        for model in models:
-            name, version = model.split(':')
-            try:
-                list_models[name][version] = None
-            except KeyError:
-                list_models[name] = {version: None}
-        workspaces[workspace] = list_models
-    return True
 
 @app.before_request
 def app_init():
@@ -119,6 +121,8 @@ def download_registry_model():
     global workspaces
     global logger
     global current_model
+    global current_model_name
+    
     try:
         # Get POST json data
         json = request.get_json()
@@ -189,16 +193,23 @@ def model_predict():
             'error': 'game_id must be provided'
         }
     else:
-        code = 200
-        print(current_model)
-        y_pred_discrete, y_pred_proba, y_true = wandb_handler.predict(current_model_name, current_model, game_id)
-        metrics = wandb_handler.get_metrics(y_pred_discrete, y_pred_proba, y_true)
-        response = {
-            'results': y_pred_proba
-        }
-    
+        logger.info(f'Predicting game {game_id} with model {current_model_name}')
+        try:
+            df = wandb_handler.predict(current_model_name, current_model, game_id)
+            metrics = wandb_handler.get_metrics(df['is_goal'].to_numpy(), df['goal_probability'].to_numpy(), df['labels'].to_numpy())
+            logger.info(f'{df.head()}')
 
-    app.logger.info(fmt(response, code))
+            response = {
+                'results': {'df': df.to_dict(), 'metrics': metrics}
+            }
+            code = 200
+        except Exception as e:
+            logger.error(fmt(str(e), 500))
+            response = {
+                'error': str(e)
+            }
+            code = 500
+    
     return jsonify(response), code # response must be json serializable!
 
 

@@ -6,7 +6,7 @@ from ift6758.features.preprocess_II import PreprocessII  as pp2
 from ift6758.features.feature_engineering_II import  FeatureEngineeringII as fe2
 from typing import List, Tuple, Any
 from sklearn.base import BaseEstimator
-import numpy as np
+import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 class LightWandbHandler:
@@ -70,7 +70,7 @@ class LightWandbHandler:
             dict: A dictionary containing the evaluation metrics.
         """
         metrics = {
-            "auc": roc_auc_score(y_eval, y_pred_proba[:, 1]),
+            "auc": roc_auc_score(y_eval, y_pred_proba),
             "accuracy": accuracy_score(y_eval, y_pred_discrete),
             "precision": precision_score(y_eval, y_pred_discrete),
             "recall": recall_score(y_eval, y_pred_discrete),
@@ -87,12 +87,16 @@ class LightWandbHandler:
         Returns:
             list: A list of model names.
         """
-        collections = [
-            coll for coll in self.api.artifact_type(type_name="model", project=worksapce_name).collections()
-        ]
-        return [artifact.name for coll in collections for artifact in coll.artifacts()]
+        try :
+            collections = [
+                coll for coll in self.api.artifact_type(type_name="model", project=worksapce_name).collections()
+            ]
+            return [artifact.name for coll in collections for artifact in coll.artifacts()]
+        except Exception as e:
+            print(e)
+            return []
     
-    def predict(self, model_name:str, model: BaseEstimator, game_id: int) -> Tuple[np.array, np.array, np.array]:	
+    def predict(self, model_name:str, model: BaseEstimator, game_id: int) -> pd.DataFrame:	
         """
         Makes predictions using the trained model.
 
@@ -101,24 +105,25 @@ class LightWandbHandler:
             X_eval (np.array): The evaluation features.
 
         Returns:
-            tuple: A tuple containing the discrete predictions and the predicted probabilities.
+            
         """
         game_data = self.get_game_id(game_id)
 
         features = []
-        if "distance" in model_name and "angle" in model_name:
-            features = ['distance_from_net', 'angle_from_net']
-        elif "distance" in model_name:
-            features = ['distance_from_net']
-        elif "angle" in model_name:
-            features = ['angle_from_net']
-        
-        X = game_data[features].to_numpy()
-        y_true = game_data['labels'].to_numpy().reshape(-1, 1)
-
-        y_pred_discrete = model.predict(X)
+        if "distance" in model_name:
+            features.append('distance_from_net')
+        if "angle" in model_name:
+            features.append('angle_from_net')
+        if features == []:
+            features = ['distance_from_net', 'angle_from_net', 'empty_net']
+        train_df = game_data[ features].copy()
+        X = train_df.to_numpy()
+        train_df['labels'] = game_data['labels']
         y_pred_proba = model.predict_proba(X)
-        return y_pred_discrete, y_pred_proba, y_true
+        y_pred_discrete = model.predict(X)
+        train_df['goal_probability'] = y_pred_proba[:, 1]
+        train_df['is_goal'] = y_pred_discrete
+        return train_df
     
 
     def get_workspaces_lists(self) -> List[str]:

@@ -130,10 +130,10 @@ class FeatureEngineeringII:
         """
         for column in self.df.columns:
             if self.df[column].dtype == 'float64':
-                self.df[column].fillna(self.df[column].mean(), inplace=True)
+                self.df[column] = self.df[column].fillna(self.df[column].mean())
             else:
                 try:
-                    self.df[column].fillna(self.df[column].value_counts().idxmax(), inplace=True)
+                    self.df[column] = self.df[column].fillna(self.df[column].value_counts().idxmax())
                 except ValueError as e:
                     print(f"Error on column : {column}")
                     print(f" row : {self.df[column]}")
@@ -182,7 +182,7 @@ class FeatureEngineeringII:
         df['empty_net'] = df.apply(is_empty_net, axis=1)
         
         # Fill NaNs with 0
-        df['empty_net'].fillna(0, inplace=True)
+        df['empty_net'] = df['empty_net'].fillna(0)
         return df
 
     def clean_df(self, remove_irrelevant=False, columns=None):    

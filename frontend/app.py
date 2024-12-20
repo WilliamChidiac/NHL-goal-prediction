@@ -22,38 +22,52 @@ st.title("Model Prediction App")
 model_name = None
 model_versions = None
 
+with st.sidebar:
+    # Model selection
+    workspace = st.selectbox("Choose a workspace", list(models.keys()))
+    if workspace:
+        model_name = st.selectbox("Choose a model", list(models[workspace].keys()))
+    if model_name:
+        model_versions = st.selectbox("Choose a version", models[workspace][model_name])
 
-# Model selection
-workspace = st.selectbox("Choose a workspace", list(models.keys()))
-if workspace:
-    model_name = st.selectbox("Choose a model", list(models[workspace].keys()))
-if model_name:
-    model_versions = st.selectbox("Choose a version", models[workspace][model_name])
+    if st.button("Load Model"):
+        response = requests.post(f"{FLASK_API_URL}/download_registry_model", json={"workspace": workspace, "model": model_name, "version": model_versions})
+        if response.status_code == 200:
+            st.write(f"Model {workspace}/{model_name}:{model_versions} downloaded successfully")
+        else:
+            print(response.json())
+            # st.write(f"Error: {response.json()['response']}")
+        # response = response.json()["response"]
+        # st.write(response)
 
-if st.button("Load Model"):
-    response = requests.post(f"{FLASK_API_URL}/download_registry_model", json={"workspace": workspace, "model": model_name, "version": model_versions})
-    if response.status_code == 200:
-        st.write(f"Model {workspace}/{model_name}:{model_versions} downloaded successfully")
-    else:
-        print(response.json())
-        # st.write(f"Error: {response.json()['response']}")
-    # response = response.json()["response"]
-    # st.write(response)
+with st.container():
+    # Input number
+    game_id = st.number_input("Input the game id", min_value=0)
 
-# Input number
-game_id = st.number_input("Input the game id", min_value=0)
+with st.container():    
+    # Predict button
+    if st.button("Predict"):
+        # Make a prediction request to the Flask API
+        if model_name is None or model_versions is None:
+            st.write("Please select and load a model first")
+        else:
+            response = requests.post(f"{FLASK_API_URL}/predict", json={"game_id": game_id})
+            prediction = response.json()
+            df = pd.DataFrame(prediction['results']['df'])
+            metrics = prediction['results']['metrics']
 
-# Predict button
-if st.button("Predict"):
-    # Make a prediction request to the Flask API
-    response = requests.post(f"{FLASK_API_URL}/predict", json={"game_id": game_id})
-    prediction = response.json()
-
-    if response.status_code == 200:
-        # Display the prediction result
-        st.write(f"Prediction: {prediction['results']}")
-    elif response.status_code == 404:
-        st.write(f"Model {model_name} not found in downloads. Please download the model first or use the dynamic download option.")
-    elif response.status_code == 400:
-        st.write(f"Error: {prediction['error']}")
+        if response.status_code == 200:
+            # Display the prediction result
+            st.write("Prediction Result")
+            st.dataframe(df)
+            st.write(f"Metrics:")
+            st.write("AUC: ", metrics['auc'])
+            st.write("Accuracy: ", metrics['accuracy'])
+            st.write("Precision: ", metrics['precision'])
+            st.write("Recall: ", metrics['recall'])
+            st.write("F1 Score: ", metrics['f1_score'])
+        elif response.status_code == 404:
+            st.write(f"Model {model_name} not found in downloads. Please download the model first or use the dynamic download option.")
+        elif response.status_code == 500:
+            st.write(f"Error: {prediction['error']}")
 
