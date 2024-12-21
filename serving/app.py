@@ -195,12 +195,13 @@ def model_predict():
     else:
         logger.info(f'Predicting game {game_id} with model {current_model_name}')
         try:
-            df = wandb_handler.predict(current_model_name, current_model, game_id)
-            metrics = wandb_handler.get_metrics(df['is_goal'].to_numpy(), df['goal_probability'].to_numpy(), df['labels'].to_numpy())
+            df, away_team, home_team = wandb_handler.predict(current_model_name, current_model, game_id)
+
+            metrics = wandb_handler.get_metrics(df['goal_prediction'].to_numpy(), df['goal_probability'].to_numpy(), df['actual_goals'].to_numpy())
             logger.info(f'{df.head()}')
 
             response = {
-                'results': {'df': df.to_dict(), 'metrics': metrics}
+                'results': {'df': df.to_dict(), 'metrics': metrics, 'home_team': home_team, 'away_team': away_team}
             }
             code = 200
         except Exception as e:

@@ -53,11 +53,15 @@ with st.container():
         else:
             response = requests.post(f"{FLASK_API_URL}/predict", json={"game_id": game_id})
             prediction = response.json()
+            home_team = prediction['results']['home_team']
+            away_team = prediction['results']['away_team']
             df = pd.DataFrame(prediction['results']['df'])
             metrics = prediction['results']['metrics']
 
         if response.status_code == 200:
             # Display the prediction result
+            st.write(f"Home team: {home_team["abbrev"]}, Actual: {home_team["score"]}, Expected: {home_team["expected_goals"]}")
+            st.write(f"Away team: {away_team["abbrev"]}, {away_team["score"]}, Expected: {away_team["expected_goals"]}")
             st.write("Prediction Result")
             st.dataframe(df)
             st.write(f"Metrics:")
@@ -66,6 +70,8 @@ with st.container():
             st.write("Precision: ", metrics['precision'])
             st.write("Recall: ", metrics['recall'])
             st.write("F1 Score: ", metrics['f1_score'])
+   
+            
         elif response.status_code == 404:
             st.write(f"Model {model_name} not found in downloads. Please download the model first or use the dynamic download option.")
         elif response.status_code == 500:

@@ -1,3 +1,6 @@
+## team context
+2 people working on project: William Chidiac and Andre Diler
+
 ## PREREQUISITES
 
 install ```Docker``` and ```Docker-compose```

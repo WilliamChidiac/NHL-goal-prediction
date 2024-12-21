@@ -8,7 +8,7 @@ from typing import List, Tuple, Any
 from sklearn.base import BaseEstimator
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-
+from ift6758.data.get_data import retrieve_game_data
 class LightWandbHandler:
     """
     A class to handle interactions with Weights and Biases (wandb) for downloading and logging artifacts.
@@ -107,8 +107,9 @@ class LightWandbHandler:
         Returns:
             
         """
-        game_data = self.get_game_id(game_id)
-
+        game_data, away_team, home_team = self.get_game_id(game_id)
+        away_team_id = away_team["id"]
+        home_team_id = home_team["id"]
         features = []
         if "distance" in model_name:
             features.append('distance_from_net')
@@ -118,12 +119,18 @@ class LightWandbHandler:
             features = ['distance_from_net', 'angle_from_net', 'empty_net']
         train_df = game_data[ features].copy()
         X = train_df.to_numpy()
-        train_df['labels'] = game_data['labels']
         y_pred_proba = model.predict_proba(X)
         y_pred_discrete = model.predict(X)
+        train_df["owner_team_id"] = game_data["owner_team_id"]
+        train_df["empty_net"] = game_data["empty_net"]
         train_df['goal_probability'] = y_pred_proba[:, 1]
-        train_df['is_goal'] = y_pred_discrete
-        return train_df
+        train_df['goal_prediction'] = y_pred_discrete
+        train_df['actual_goals'] = game_data['labels']
+        home_team_expected_goals = train_df[train_df["owner_team_id"] == home_team_id]["goal_probability"].sum()
+        away_team_expected_goals = train_df[train_df["owner_team_id"] == away_team_id]["goal_probability"].sum()
+        home_team["expected_goals"] = home_team_expected_goals
+        away_team["expected_goals"] = away_team_expected_goals
+        return train_df, away_team, home_team
     
 
     def get_workspaces_lists(self) -> List[str]:
@@ -144,9 +151,11 @@ class LightWandbHandler:
         """
         Retrieves the game data from NHL API and preprocesses it.
         """
-
+        raw_game_data = retrieve_game_data(game_id)
+        away_team = raw_game_data["awayTeam"]
+        home_team = raw_game_data["homeTeam"]
         df = pp2.get_game_df(game_id)
         cleaned_df = fe2(df)
-        cleaned_df.clean_df(columns=['game_id', 'event_id', 'distance_from_net', 'angle_from_net', 'labels', 'empty_net'])
-        return cleaned_df.df
+        cleaned_df.clean_df(columns=['game_id', 'event_id', 'owner_team_id', 'distance_from_net', 'angle_from_net', 'empty_net', 'labels'])
+        return cleaned_df.df, home_team, away_team
     
