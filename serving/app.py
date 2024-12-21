@@ -192,6 +192,11 @@ def model_predict():
         response = {
             'error': 'game_id must be provided'
         }
+    elif current_model is None:
+        code = 400
+        response = {
+            'error': 'No model loaded'
+        }
     else:
         logger.info(f'Predicting game {game_id} with model {current_model_name}')
         try:
